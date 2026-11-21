@@ -335,6 +335,7 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 1. `README.md`: what it is, quick start (`docker compose up --build`), open URL, load seed data, run tests, local dev without Docker, project layout, API table (link to `/docs`).
 2. `NOTES.md` (one page): stack and why; grading scheme; validation decisions (every **Decision** in the trap catalogue); duplicates and re-upload policy; bad/large/slow file behaviour; data traps noticed; pinned `today` for golden tests; what's missing (auth, import history page, background jobs, delete/edit students, i18n, rate limiting); what I'd do next.
 - **Done when:** someone who hasn't seen the project can follow the README from a fresh clone.
+- **Built notes:** timings measured, not guessed (sample ≈0.7 s, 50,000 rows / 4.8 MB ≈6 s in Docker). NOTES.md trimmed from ~900 to ~670 words to fit the one-page brief. The README is checked from a fresh clone in step 14.
 - Commit: `docs: README and NOTES`
 
 ### Step 14 — Final check
