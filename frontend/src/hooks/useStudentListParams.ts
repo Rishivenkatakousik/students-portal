@@ -9,9 +9,10 @@ export const CLASSES = Array.from({ length: 12 }, (_, i) => i + 1)
 export const SECTIONS = ['A', 'B', 'C', 'D', 'E', 'F']
 export const DEFAULT_SORT: StudentSort = 'student_id'
 const SORTS: StudentSort[] = ['student_id', '-student_id', 'name', '-name', 'class', '-class', 'percentage', '-percentage']
-// Options for the phone sort menu (table headers are hidden on narrow screens).
+// Options for the sort menu (on phones the table headers are hidden).
 export const SORT_OPTIONS: [StudentSort, string][] = [
   ['student_id', 'Student ID'],
+  ['-student_id', 'Student ID (Z–A)'],
   ['name', 'Name A–Z'],
   ['-name', 'Name Z–A'],
   ['class', 'Class (lowest first)'],

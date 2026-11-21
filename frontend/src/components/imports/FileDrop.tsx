@@ -1,15 +1,16 @@
+import { CloudUpload } from 'lucide-react'
 import { useId, useRef, useState, type DragEvent } from 'react'
-import { btnSecondary } from '../../styles/ui'
-import { formatBytes } from '../../utils/format'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export function FileDrop({
-  file,
   disabled,
   onChoose,
+  className,
 }: {
-  file: File | null
   disabled: boolean
   onChoose: (file: File | undefined) => void
+  className?: string
 }) {
   const input = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
@@ -23,9 +24,11 @@ export function FileDrop({
 
   return (
     <div
-      className={`rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors ${
-        dragging ? 'border-accent bg-accent-soft' : 'border-line bg-white'
-      }`}
+      className={cn(
+        'flex flex-col items-center justify-center gap-2 rounded-3xl border-[1.5px] border-dashed px-6 py-11 text-center transition-colors',
+        dragging ? 'border-primary bg-primary/5' : 'border-input bg-card',
+        className,
+      )}
       onDragOver={(e) => {
         e.preventDefault()
         if (!disabled) setDragging(true)
@@ -33,19 +36,23 @@ export function FileDrop({
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
     >
-      <p className="font-semibold">Drag and drop a CSV file here</p>
-      <p className="mt-1 mb-2 text-sm text-muted" id={hintId}>
-        or
+      <span className="mb-2 inline-flex size-16 items-center justify-center rounded-full border bg-muted text-primary">
+        <CloudUpload className="size-7" aria-hidden="true" />
+      </span>
+      <p className="font-display text-xl font-semibold tracking-tight">Drop your CSV here</p>
+      <p className="text-muted-foreground" id={hintId}>
+        Exported from Excel or Google Sheets · up to 10 MB
       </p>
-      <button
-        type="button"
-        className={btnSecondary}
+      <Button
+        variant="outline"
+        size="lg"
+        className="mt-3"
         onClick={() => input.current?.click()}
         disabled={disabled}
         aria-describedby={hintId}
       >
-        Choose file
-      </button>
+        Browse files
+      </Button>
       <input
         ref={input}
         type="file"
@@ -57,11 +64,6 @@ export function FileDrop({
           e.target.value = '' // allow choosing the same file again
         }}
       />
-      {file && (
-        <p className="mt-4 wrap-anywhere">
-          Selected: <strong>{file.name}</strong> ({formatBytes(file.size)})
-        </p>
-      )}
     </div>
   )
 }

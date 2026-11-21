@@ -1,14 +1,19 @@
+import { ArrowRight, X } from 'lucide-react'
 import { useState } from 'react'
 import { ErrorAlert } from '../components/ErrorAlert'
 import { FileDrop } from '../components/imports/FileDrop'
 import { ImportOutcome } from '../components/imports/ImportOutcome'
+import { ProblemsTable } from '../components/imports/ProblemsTable'
 import { RecentImports } from '../components/imports/RecentImports'
 import { UploadError } from '../components/imports/UploadError'
 import { UploadProgress } from '../components/imports/UploadProgress'
+import { PageHeader } from '../components/PageHeader'
 import { REQUIRED_COLUMNS } from '../constants/fields'
 import { useUploadImport } from '../hooks/queries'
-import { btnPrimary, spinner } from '../styles/ui'
 import { formatBytes } from '../utils/format'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 
 // Mirrors MAX_UPLOAD_MB on the backend, so an oversized file is refused
 // before it is uploaded. The server still enforces its own limit.
@@ -31,6 +36,12 @@ export function ImportPage() {
     )
   }
 
+  function clear() {
+    upload.reset()
+    setFile(null)
+    setLocalError(null)
+  }
+
   function start() {
     if (file && !localError) {
       setProgress(0)
@@ -38,37 +49,78 @@ export function ImportPage() {
     }
   }
 
+  const showProblems = upload.isSuccess && upload.data.summary.rejected > 0
+
   return (
     <>
-      <h1>Import student results</h1>
-      <p className="mb-6 text-muted">
-        Upload a CSV exported from your spreadsheet. Valid rows are imported; rows with problems are listed below so you
-        can fix them.
-      </p>
+      <PageHeader
+        eyebrow="Import · CSV"
+        title="Import student results"
+        description="Valid rows go straight in. Every rejected row comes back with a plain-language reason you can fix."
+      />
 
-      <div className="mb-4 grid items-center gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-        <FileDrop file={file} disabled={upload.isPending} onChoose={choose} />
-        <div className="flex flex-col items-start gap-3">
-          <p className="text-sm text-muted">
-            <strong>Required columns</strong> (any order, extra columns are ignored):{' '}
-            {REQUIRED_COLUMNS.map((c, i) => (
-              <span key={c}>
-                <code>{c}</code>
-                {i < REQUIRED_COLUMNS.length - 1 ? ', ' : ''}
+      <section aria-label="Upload a file" className="flex flex-wrap gap-4">
+        <FileDrop className="flex-[3_1_420px]" disabled={upload.isPending} onChoose={choose} />
+
+        <Card className="flex-[2_1_320px] gap-5 rounded-3xl p-6 shadow-none">
+          {file ? (
+            <div className="flex items-center gap-3.5 rounded-2xl border border-input bg-muted p-3.5">
+              <span
+                className="inline-flex size-11 flex-none items-center justify-center rounded-xl bg-background font-mono text-[11px] font-medium text-primary"
+                aria-hidden="true"
+              >
+                CSV
               </span>
-            ))}
-          </p>
-          <button
-            type="button"
-            className={btnPrimary}
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold" title={file.name}>
+                  {file.name}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {formatBytes(file.size)} · {upload.isSuccess ? 'imported' : 'ready to import'}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon-lg"
+                onClick={clear}
+                disabled={upload.isPending}
+                aria-label="Remove file"
+              >
+                <X />
+              </Button>
+            </div>
+          ) : (
+            <p className="rounded-2xl border border-dashed border-input px-4 py-5 text-center text-muted-foreground">
+              No file chosen yet
+            </p>
+          )}
+
+          <div>
+            <p className="mb-2.5 text-sm text-muted-foreground">
+              <strong className="font-medium text-foreground">{REQUIRED_COLUMNS.length} required columns</strong> · any
+              order · extra columns are ignored
+            </p>
+            <ul className="flex flex-wrap gap-1.5" aria-label="Required columns">
+              {REQUIRED_COLUMNS.map((c) => (
+                <li key={c}>
+                  <Badge variant="outline" className="rounded-lg border-input bg-muted font-mono text-[11.5px] text-foreground/85">
+                    {c}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <Button
+            className="mt-auto h-14 rounded-2xl text-base font-semibold"
             onClick={start}
             disabled={!file || Boolean(localError) || upload.isPending}
           >
-            {upload.isPending && <span className={spinner} aria-hidden="true" />}
             {upload.isPending ? 'Importing…' : 'Upload and import'}
-          </button>
-        </div>
-      </div>
+            {!upload.isPending && <ArrowRight className="size-[18px]" aria-hidden="true" />}
+          </Button>
+        </Card>
+      </section>
 
       <div aria-live="polite">
         {localError && <ErrorAlert title="This file is too large" message={localError} />}
@@ -77,7 +129,16 @@ export function ImportPage() {
         {upload.isSuccess && <ImportOutcome result={upload.data} />}
       </div>
 
-      <RecentImports />
+      <div className="mt-4 flex flex-wrap items-start gap-4">
+        {showProblems && (
+          <ProblemsTable
+            className="min-w-0 flex-[999_1_620px]"
+            importId={upload.data.summary.id}
+            firstPage={upload.data.problems}
+          />
+        )}
+        <RecentImports className={showProblems ? 'flex-[1_1_300px]' : 'mt-6 flex-1'} />
+      </div>
     </>
   )
 }

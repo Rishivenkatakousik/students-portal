@@ -1,5 +1,8 @@
+import { SearchX, Upload, Users, X } from 'lucide-react'
 import { Link } from 'react-router'
+import { EmptyState } from '../components/EmptyState'
 import { ErrorAlert } from '../components/ErrorAlert'
+import { PageHeader } from '../components/PageHeader'
 import { Pagination } from '../components/Pagination'
 import { SearchBox } from '../components/students/SearchBox'
 import { SkeletonTable } from '../components/students/SkeletonTable'
@@ -15,8 +18,13 @@ import {
   useStudentListParams,
   type ListParams,
 } from '../hooks/useStudentListParams'
-import { btnPrimary, btnSecondary, control, stateCard, stateText } from '../styles/ui'
 import { formatNumber } from '../utils/format'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
+const ALL = 'all' // Select items can't use "" as a value
+const filterTrigger = 'h-12 min-w-40 rounded-[14px] border-input bg-muted px-4 data-[size=default]:h-12 dark:bg-muted dark:hover:bg-accent'
 
 export function StudentsPage() {
   const { search, params, update, clear } = useStudentListParams()
@@ -25,96 +33,141 @@ export function StudentsPage() {
 
   return (
     <>
-      <h1>Students</h1>
-      <div className="my-4 flex flex-wrap items-center gap-3">
+      <PageHeader
+        eyebrow={
+          <span aria-live="polite">
+            {/* While a new search loads, the dimmed rows are the previous results:
+                don't pair their count with the new search. */}
+            {students.isPending
+              ? 'Loading…'
+              : students.isPlaceholderData
+                ? 'Searching…'
+                : students.isError
+                  ? 'Students'
+                  : `${formatNumber(students.data.total)} ${students.data.total === 1 ? 'student' : 'students'}${filtered ? ' match' : ''}`}
+          </span>
+        }
+        title="Students"
+        description="Search by name or ID, narrow by class, and open anyone's report."
+        actions={
+          <Button asChild variant="outline" size="lg" className="h-12 rounded-[14px] px-5">
+            <Link to="/import">
+              <Upload aria-hidden="true" />
+              Import CSV
+            </Link>
+          </Button>
+        }
+      />
+
+      <Card className="mb-4 flex-row flex-wrap gap-2 rounded-[22px] p-2.5 shadow-none">
         <SearchBox value={params.q} onSearch={(q) => update({ q }, { replace: true })} />
-        <label>
-          <span className="sr-only">Class</span>
-          <select className={control} value={params.grade_level ?? ''} onChange={(e) => update({ class: e.target.value })}>
-            <option value="">All classes</option>
+        <Select
+          value={params.grade_level ? String(params.grade_level) : ALL}
+          onValueChange={(v) => update({ class: v === ALL ? undefined : v })}
+        >
+          <SelectTrigger className={filterTrigger} aria-label="Class">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All classes</SelectItem>
             {CLASSES.map((c) => (
-              <option key={c} value={c}>
+              <SelectItem key={c} value={String(c)}>
                 Class {c}
-              </option>
+              </SelectItem>
             ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Section</span>
-          <select className={control} value={params.section ?? ''} onChange={(e) => update({ section: e.target.value })}>
-            <option value="">All sections</option>
+          </SelectContent>
+        </Select>
+        <Select
+          value={params.section ?? ALL}
+          onValueChange={(v) => update({ section: v === ALL ? undefined : v })}
+        >
+          <SelectTrigger className={filterTrigger} aria-label="Section">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>All sections</SelectItem>
             {SECTIONS.map((s) => (
-              <option key={s} value={s}>
+              <SelectItem key={s} value={s}>
                 Section {s}
-              </option>
+              </SelectItem>
             ))}
-          </select>
-        </label>
-        <label className="sm:hidden">
-          <span className="sr-only">Sort by</span>
-          <select
-            className={control}
-            value={params.sort}
-            onChange={(e) => update({ sort: e.target.value === DEFAULT_SORT ? undefined : e.target.value })}
-          >
+          </SelectContent>
+        </Select>
+        <Select
+          value={params.sort}
+          onValueChange={(v) => update({ sort: v === DEFAULT_SORT ? undefined : v })}
+        >
+          <SelectTrigger className={`${filterTrigger} min-w-52`} aria-label="Sort by">
+            <span className="text-muted-foreground">Sort ·</span>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
             {SORT_OPTIONS.map(([value, label]) => (
-              <option key={value} value={value}>
-                Sort: {label}
-              </option>
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
             ))}
-          </select>
-        </label>
+          </SelectContent>
+        </Select>
         {filtered && (
-          <button type="button" className={btnSecondary} onClick={clear}>
+          <Button variant="ghost" className="h-12 rounded-[14px] px-4" onClick={clear}>
+            <X aria-hidden="true" />
             Clear filters
-          </button>
+          </Button>
         )}
-      </div>
+      </Card>
 
       {students.isPending ? (
-        <SkeletonTable rows={8} />
+        <Card className="overflow-hidden rounded-3xl py-0 shadow-none">
+          <SkeletonTable rows={8} />
+        </Card>
       ) : students.isError ? (
         <ErrorAlert title="Couldn't load students" message={students.error.message} onRetry={() => students.refetch()} />
       ) : students.data.total === 0 && !filtered ? (
-        <div className={stateCard}>
-          <h2>No students yet</h2>
-          <p className={stateText}>Import a CSV of student results to see them here.</p>
-          <Link to="/import" className={btnPrimary}>
-            Import a file
-          </Link>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="No students yet"
+          action={
+            <Button asChild size="lg">
+              <Link to="/import">Import a file</Link>
+            </Button>
+          }
+        >
+          Import a CSV of student results to see them here.
+        </EmptyState>
       ) : students.data.total === 0 ? (
-        <div className={stateCard}>
-          <h2>
-            No students match{params.q ? ` "${params.q}"` : ''}
-            {filterDescription(params)}
-          </h2>
-          <p className={stateText}>
-            {params.q
-              ? 'Check the spelling, or search by part of a name or student ID.'
-              : 'No students are in this class and section.'}
-          </p>
-          <button type="button" className={btnSecondary} onClick={clear}>
-            Clear search and filters
-          </button>
-        </div>
+        <EmptyState
+          icon={SearchX}
+          title={
+            <>
+              No students match{params.q ? ` "${params.q}"` : ''}
+              {filterDescription(params)}
+            </>
+          }
+          action={
+            <Button variant="outline" size="lg" onClick={clear}>
+              Clear search and filters
+            </Button>
+          }
+        >
+          {params.q
+            ? 'Check the spelling, or search by part of a name or student ID.'
+            : 'No students are in this class and section.'}
+        </EmptyState>
       ) : students.data.items.length === 0 ? (
-        <div className={stateCard}>
-          <h2>Page {params.page} is empty</h2>
-          <p className={stateText}>There are only {formatNumber(students.data.total)} matching students.</p>
-          <button type="button" className={btnSecondary} onClick={() => update({ page: undefined })}>
-            Go to the first page
-          </button>
-        </div>
+        <EmptyState
+          icon={SearchX}
+          title={`Page ${params.page} is empty`}
+          action={
+            <Button variant="outline" size="lg" onClick={() => update({ page: undefined })}>
+              Go to the first page
+            </Button>
+          }
+        >
+          There are only {formatNumber(students.data.total)} matching students.
+        </EmptyState>
       ) : (
-        <>
-          <p className="mb-2 text-sm text-muted" aria-live="polite">
-            {/* While a new search loads, the dimmed rows are the previous results:
-                don't pair their count with the new search. */}
-            {students.isPlaceholderData
-              ? 'Searching…'
-              : `${formatNumber(students.data.total)} ${students.data.total === 1 ? 'student' : 'students'}${filtered ? ' match' : ''}`}
-          </p>
+        <Card className="gap-0 overflow-hidden rounded-3xl py-0 shadow-none">
           <StudentsTable
             students={students.data.items}
             loading={students.isFetching}
@@ -122,7 +175,7 @@ export function StudentsPage() {
             sort={params.sort}
             onSort={(sort) => update({ sort: sort === DEFAULT_SORT ? undefined : sort })}
           />
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-3.5">
             <Pagination
               page={params.page}
               pageSize={params.page_size}
@@ -133,24 +186,29 @@ export function StudentsPage() {
               }}
               noun="students"
             />
-            <label className="inline-flex items-center gap-2 text-sm text-muted">
-              <span>Rows per page</span>
-              <select
-                className={control}
-                value={params.page_size}
-                onChange={(e) =>
-                  update({ size: Number(e.target.value) === DEFAULT_PAGE_SIZE ? undefined : e.target.value })
-                }
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span id="rows-per-page">Rows per page</span>
+              <Select
+                value={String(params.page_size)}
+                onValueChange={(v) => update({ size: Number(v) === DEFAULT_PAGE_SIZE ? undefined : v })}
               >
-                {PAGE_SIZES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <SelectTrigger
+                  className="h-10 rounded-xl border-input bg-muted text-foreground dark:bg-muted"
+                  aria-labelledby="rows-per-page"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZES.map((s) => (
+                    <SelectItem key={s} value={String(s)}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        </>
+        </Card>
       )}
     </>
   )

@@ -1,5 +1,7 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { formatNumber } from '../utils/format'
-import { btnPrimarySmall, btnSecondarySmall } from '../styles/ui'
 
 type Props = {
   page: number
@@ -27,46 +29,53 @@ export function Pagination({ page, pageSize, total, onPageChange, noun }: Props)
   const end = Math.min(page * pageSize, total)
 
   return (
-    <nav className="mt-3 flex flex-1 flex-wrap items-center justify-between gap-3" aria-label={`${noun} pages`}>
-      <p className="text-sm text-muted">
+    <nav className="flex flex-1 flex-wrap items-center justify-between gap-3" aria-label={`${noun} pages`}>
+      <p className="text-sm text-muted-foreground">
         Showing {formatNumber(first)}–{formatNumber(end)} of {formatNumber(total)} {noun}
       </p>
       {last > 1 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            className={btnSecondarySmall}
+          <Button
+            variant="outline"
+            size="icon-lg"
+            className="rounded-full"
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
+            aria-label="Previous page"
           >
-            ‹ Previous
-          </button>
+            <ChevronLeft />
+          </Button>
           {pageNumbers(page, last).map((p, i) =>
             p === 'gap' ? (
-              <span key={`gap-${i}`} className="px-1 text-muted" aria-hidden="true">
+              <span key={`gap-${i}`} className="px-1 text-muted-foreground" aria-hidden="true">
                 …
               </span>
             ) : (
-              <button
+              <Button
                 key={p}
-                type="button"
-                className={p === page ? btnPrimarySmall : btnSecondarySmall}
+                variant="ghost"
+                className={cn(
+                  'h-10 min-w-10 rounded-full px-3',
+                  p === page && 'bg-foreground font-semibold text-background hover:bg-foreground/90 hover:text-background',
+                )}
                 onClick={() => onPageChange(p)}
                 aria-current={p === page ? 'page' : undefined}
                 aria-label={`Page ${p}`}
               >
                 {p}
-              </button>
+              </Button>
             ),
           )}
-          <button
-            type="button"
-            className={btnSecondarySmall}
+          <Button
+            variant="outline"
+            size="icon-lg"
+            className="rounded-full"
             onClick={() => onPageChange(page + 1)}
             disabled={page >= last}
+            aria-label="Next page"
           >
-            Next ›
-          </button>
+            <ChevronRight />
+          </Button>
         </div>
       )}
     </nav>

@@ -1,14 +1,21 @@
+import { MapPinOff } from 'lucide-react'
 import { Link } from 'react-router'
-import { btnPrimary, stateText } from '../styles/ui'
+import { EmptyState } from '../components/EmptyState'
+import { Button } from '@/components/ui/button'
 
 export function NotFoundPage() {
   return (
-    <div className="px-4 py-12 text-center">
-      <h1>Page not found</h1>
-      <p className={stateText}>There is nothing at this address.</p>
-      <Link to="/students" className={btnPrimary}>
-        Go to students
-      </Link>
-    </div>
+    <EmptyState
+      icon={MapPinOff}
+      heading="h1"
+      title="Page not found"
+      action={
+        <Button asChild size="lg">
+          <Link to="/students">Go to students</Link>
+        </Button>
+      }
+    >
+      There is nothing at this address.
+    </EmptyState>
   )
 }

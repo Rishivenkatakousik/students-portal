@@ -4,6 +4,9 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { ApiError } from './api'
 import { router } from './router'
+import '@fontsource-variable/inter'
+import '@fontsource-variable/jetbrains-mono'
+import '@fontsource-variable/space-grotesk'
 import './styles/index.css'
 
 const queryClient = new QueryClient({
