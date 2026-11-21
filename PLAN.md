@@ -6,7 +6,7 @@ Es Magico full-stack intern take-home (`EsMagico - Fullstack Intern Assignment.p
 Deliverables: frontend + backend + seed script, Dockerfile (+ compose), one-command tests, README (how to run), NOTES.md (one page: stack, decisions, gaps, next steps), clean commit history.
 
 ## Stack (agreed)
-- **Backend:** FastAPI (Python 3.12), Pydantic v2
+- **Backend:** FastAPI (Python 3.13), Pydantic v2
 - **DB:** PostgreSQL 16 via **SQLAlchemy 2.0** (typed ORM models; Core `postgresql.insert().on_conflict_do_update()` for bulk upsert) + **Alembic**
 - **CSV:** stdlib `csv` (`encoding="utf-8-sig"`, `newline=""`, `reader.line_num`) + hand-written validators — no pandas (it pads short rows with NaN, drops blank lines from numbering, coerces "09"/"" → loses raw values)
 - **Frontend:** React + Vite + TypeScript, React Router, TanStack Query
@@ -108,7 +108,7 @@ A ≥ 80 · B 65–79.99 · C 50–64.99 · D 40–49.99 · F < 40 (on overall %
 5. Seed round-trip: generator's expected counts == importer's counts.
 
 ## Docker
-- **Dockerfile:** stage 1 `node:20-alpine` → `npm ci && npm run build`; stage 2 `python:3.12-slim` → install backend, copy `dist`, `CMD alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8080`.
+- **Dockerfile:** stage 1 `node:20-alpine` → `npm ci && npm run build`; stage 2 `python:3.13-slim` → install backend, copy `dist`, `CMD alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8080`.
 - **docker-compose.yml:** `db` (postgres:16, healthcheck, named volume), `app` (build ., port 8080, `DATABASE_URL`, `depends_on: db: service_healthy`).
 - README quick start: `docker compose up --build` → open http://localhost:8080; seed: `docker compose exec app python -m seed.generate --upload http://localhost:8080`; tests: `docker compose run --rm app pytest`.
 
@@ -206,7 +206,7 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 
 ### Step 1 — Backend skeleton
 1. `backend/pyproject.toml` with deps: `fastapi`, `uvicorn[standard]`, `python-multipart`, `sqlalchemy>=2`, `psycopg[binary]>=3`, `alembic`, `pydantic-settings`; dev: `pytest`, `httpx`, `faker`.
-2. `python3.12 -m venv .venv && pip install -e "backend[dev]"`.
+2. `cd backend && uv venv --python 3.13 .venv && uv pip install -e ".[dev]"` (or `python3.13 -m venv .venv && pip install -e ".[dev]"`).
 3. `app/main.py` with `GET /api/health` → `{"status": "ok"}`; `app/config.py` (`DATABASE_URL`, `MAX_UPLOAD_MB=10`).
 4. `tests/test_health.py` using FastAPI `TestClient`.
 - **Done when:** `pytest` passes; `uvicorn app.main:app --port 8080` answers `/api/health`.
@@ -303,7 +303,7 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 - Commit: `feat(frontend): student report page`
 
 ### Step 11 — Docker
-1. `Dockerfile` (multi-stage): `node:20-alpine` builds `frontend/dist`; `python:3.12-slim` installs backend (non-root user), copies `dist` + `seed/`; `CMD` runs `alembic upgrade head` then `uvicorn` on 8080.
+1. `Dockerfile` (multi-stage): `node:20-alpine` builds `frontend/dist`; `python:3.13-slim` installs backend (non-root user), copies `dist` + `seed/`; `CMD` runs `alembic upgrade head` then `uvicorn` on 8080.
 2. FastAPI serves `dist` static files with SPA fallback (any non-`/api` path → `index.html`, so refreshing `/students/STU00001` works).
 3. `docker-compose.yml`: add `app` service (build `.`, port `8080:8080`, `DATABASE_URL`, `depends_on: db: condition: service_healthy`, healthcheck on `/api/health`).
 4. `.dockerignore`: `node_modules`, `.venv`, `.git`, `*.pdf`, `dist`.
