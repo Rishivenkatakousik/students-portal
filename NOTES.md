@@ -2,37 +2,38 @@
 
 ## Stack and why
 
-- **FastAPI (Python 3.13) with the standard `csv` module.** The import rules are the core of the task, and the standard library gets the hard parts right: strict dates, CSV quoting, exact decimals. Not pandas: it pads short rows with NaN (hiding wrong field counts), renumbers lines around blanks, and converts `"09"` or `""` before they can be reported.
-- **PostgreSQL, SQLAlchemy 2.** Tables are created from the models on start-up (`python -m app.init_db`, a no-op once they exist); no migration tool, since the schema is fixed. `INSERT … ON CONFLICT` turns re-uploads into an upsert that reports new / updated / unchanged. CHECK constraints back up the validation; trigram indexes make search fast.
-- **React, TypeScript, Vite, TanStack Query, Tailwind with shadcn/ui, axios.** shadcn/ui components are copied into the repo (`src/components/ui`), so they are our code to read and change; one dark theme, switched to light for printing. FastAPI serves the built app: one container, one origin, no CORS.
+- **FastAPI (Python 3.13) with the standard `csv` module.** The import rules are the core of the task, and the standard library gets them right: exact line numbers, strict quoting, exact decimals. Not pandas: it pads short rows (hiding wrong field counts), renumbers lines around blanks, and converts `"09"` or `""` before they can be reported.
+- **PostgreSQL, SQLAlchemy 2.** Tables are created from the models on start-up; no migration tool, since the schema is fixed. `INSERT … ON CONFLICT` makes re-uploads an upsert that counts new / updated / unchanged. CHECK constraints back up the validation; trigram indexes make search fast. Dependencies are pinned in `backend/requirements.lock`.
+- **React, TypeScript, Vite, TanStack Query, shadcn/ui.** FastAPI serves the built app: one container, one origin, no CORS.
 
-## Decisions on the rules
+## What counts as a valid row
 
-- **Duplicates:** the first row with an ID wins *even if it was invalid*, and IDs ignore case (`stu00533` repeats `STU00533`). The sample confirms both: the other readings give 4,687 and 4,707 imported, not 4,685.
-- **Every problem in a row is reported**, but the row counts once. Messages quote the value and say what's allowed.
-- **Strict formats:** dates only `YYYY-MM-DD` or `DD/MM/YYYY`; marks must look like numbers (`1e3`, `82/100`, `N/A` rejected, though `float()` accepts `1e3`); grades are whole numbers (`09` yes, `9.0` and `IX` no); ASCII digits only.
-- **Names** allow any Unicode letters including combining marks (Hindi vowel signs aren't `isalpha`), plus `' ’ , . -`. **Emails** must be ASCII with a dotted domain.
-- **Age 5–25** in whole years on the server's date. The sample's counts hold for any date from 26 Dec 2025 to at least March 2028; tests pin the date.
-- **Whole-file errors** with a plain fix: empty, over 10 MB, not UTF-8, missing or duplicate columns, wrong separator, or **a quote never closed**, which Python's csv would otherwise silently use to swallow every later row. A broken quote inside one row rejects only that row.
-- **Blank and all-empty rows are skipped** even with the wrong comma count (the small file's `,,,,,,,,,,`). Line numbers count every line; a multi-line value is reported at its first line.
+**A row is imported when it has the header's number of fields, every required column passes its rule, and its ID has not appeared on an earlier line of the file.** Otherwise the whole row is rejected and the administrator sees every problem in it: line, column, value, plain reason and code, on screen and as a CSV.
 
-## Re-uploads, failures, large files
+- **Duplicates:** the first row with an ID wins *even if it was invalid*, and IDs ignore case. The sample confirms both: the other readings give 4,687 or 4,707 imported, not 4,685.
+- **Strict formats:** dates only `YYYY-MM-DD` or `DD/MM/YYYY` with two-digit day and month; ASCII digits, no `+` sign or exponent (`+50`, `+9`, `1e3`, `82/100`, `N/A` rejected; `09` fine; class `9.0` rejected). Section `Z` is INVALID_FORMAT: not a section letter at all, rather than a number out of range.
+- **Names:** any Unicode letters including combining marks (Hindi vowel signs), plus `' ’ , . -`. **Emails:** ASCII with a dotted domain.
+- **Age 5–25** in whole years on the server's date (UTC in Docker). The sample's counts hold from 26 Dec 2025 to at least March 2028; tests pin the date.
+- **Blank and all-empty rows are skipped**, whatever their comma count. Line numbers count every line; a value spanning lines is reported at its first line. A stray NUL character invalidates only its cell.
 
-- A student in a later file is **updated**; identical data is **unchanged**, so the same file twice gives `0 new, 0 updated, 4,685 unchanged`. Students missing from a file are kept.
-- **Each import is one transaction:** a failure part-way imports nothing and is recorded. Rows are saved in ID order; without that, two simultaneous uploads deadlocked in testing.
-- **Error report:** every problem can be downloaded as a CSV for Excel. Cells copied from the upload that start with `= + - @` are made inert (CSV injection); plain numbers like `-5` stay readable.
-- **10 MB limit**, checked in the browser and the server. Imports run in the request: 5,000 rows take about 0.7 s, 50,000 about 6 s. The UI shows upload progress.
+## Bad files, re-uploads, large files
+
+- **Whole-file errors** (nothing imported, each with a plain fix): empty, over 10 MB, not UTF-8 (including UTF-16), unreadable header, missing or duplicate columns, wrong separator, header but no student rows, or **an unclosed quote**. That quote makes the following lines run together until some later quote, so the file is rejected, naming the line, rather than silently losing rows. A quote misplaced within one line rejects only that row.
+- **Re-uploads:** a student in a later file is updated, identical data is unchanged (the same file twice: `0 new, 0 updated, 4,685 unchanged`). The last file uploaded wins, even an older export. Students missing from a file are kept.
+- **Each import is one transaction:** a failure imports nothing and is recorded. Rows are saved in ID order; without that, simultaneous uploads deadlocked in testing.
+- **Error report CSV:** uploaded cells starting with `= + - @` are made inert (CSV injection).
+- **10 MB limit** in browser and server. Imports run in the request: 5,000 rows take ~0.6 s, a full 10 MB file (~140,000 rows) ~19 s, with upload progress shown.
 
 ## Grading scheme
 
-Percentage = total / 500, one decimal place. The grade uses the shown value, so "80.0%" is never a B: **A ≥ 80, B ≥ 65, C ≥ 50, D ≥ 40, F below.** **Pass = 40% overall and at least 33 in every subject**; the report names any failing subject. The UI reads the scheme from the API.
+Percentage = total / 500, one decimal. The grade uses the shown value, so "80.0%" is never a B: **A ≥ 80, B ≥ 65, C ≥ 50, D ≥ 40, F below.** **Pass = 40% overall and at least 33 in every subject**; the report names failing subjects.
 
 ## How I know the import works
 
-Exact counts for both sample files, plus every small-file problem by line and code. The 348 problems in 315 rows match the brief's sketch ("first 50 of 348"). There's a test for every data trap found in the sample files, and deliberately breaking rules confirmed the tests catch it. A seed generator that knows which rows it broke matches the importer line by line across many seeds. The screens were checked by hand in Chrome (upload, bad file, empty and not-found states, server down, phone width); those checks aren't scripted.
+Exact counts for both samples and every small-file problem by line and code; a test per data trap and per hostile file (stray quotes, NUL, UTF-16, JSON); a seed generator that knows which rows it broke matches the importer line by line. Screens were checked by hand in Chrome, not scripted.
 
 ## Missing, and next
 
-- **Missing:** sign-in, editing or deleting students, opening a past import's full problem list in the UI (its CSV report is downloadable), accent-insensitive search ("Zoe" misses "Zoë"), committed frontend tests, CI.
-- **Next:** admin sign-in; Playwright tests and CI; background imports with progress for much larger files; `unaccent` search.
-- **Trade-offs:** the image (~380 MB) includes pytest and Faker so tests and seeding run in it; ages use the server's date (UTC in Docker); page-number pagination suits thousands of students, not millions.
+- **Missing:** sign-in, editing or deleting students, browsing a past import's problems in the UI (its CSV downloads), accent-insensitive search, frontend tests, CI.
+- **Next:** sign-in; Playwright and CI; background imports for bigger files; re-reading the lines after an unclosed quote instead of rejecting the file; a request-size limit before the body is read.
+- **Trade-offs:** the image (~380 MB) includes pytest and Faker so tests and seeding run in it; page-number pagination suits thousands of students, not millions.

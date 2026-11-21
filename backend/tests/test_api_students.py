@@ -105,7 +105,7 @@ def test_empty_database(client):
 
 @pytest.mark.parametrize(
     "params",
-    [{"grade_level": 13}, {"grade_level": "nine"}, {"section": "Z"}, {"page": 0}, {"page_size": 101}, {"sort": "email"}],
+    [{"grade_level": 13}, {"grade_level": "nine"}, {"section": "Z"}, {"page": 0}, {"page": 10**20}, {"page_size": 101}, {"sort": "email"}],
 )
 def test_invalid_query_parameters_are_explained(client, params):
     response = client.get("/api/students", params=params)

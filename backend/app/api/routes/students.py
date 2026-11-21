@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Query
 
-from app.api.deps import SessionDep, TodayDep
+from app.api.deps import PageNumber, SessionDep, TodayDep
 from app.core.errors import AppError
 from app.repositories import students as students_repo
 from app.repositories.students import SortKey
@@ -19,7 +19,7 @@ def list_students(
     q: Annotated[str | None, Query(max_length=100, description="Part of a name or student ID")] = None,
     grade_level: Annotated[int | None, Query(ge=1, le=12)] = None,
     section: Annotated[str | None, Query(pattern="^[A-Fa-f]$")] = None,
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: PageNumber = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
     sort: SortKey = "student_id",
 ) -> Page[StudentListItem]:

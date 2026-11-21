@@ -1,9 +1,9 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Response, UploadFile
+from fastapi import APIRouter, Path, Query, Response, UploadFile
 from sqlalchemy.orm import Session
 
-from app.api.deps import SessionDep, TodayDep
+from app.api.deps import PageNumber, SessionDep, TodayDep
 from app.core.config import settings
 from app.core.errors import AppError
 from app.models import Import
@@ -18,12 +18,16 @@ router = APIRouter(prefix="/api/imports", tags=["imports"])
 
 FIRST_PAGE_SIZE = 50
 
+# imports.id is a 32-bit integer; anything larger is a 422, not a 500.
+ImportId = Annotated[int, Path(ge=1, le=2_147_483_647)]
+
 
 @router.post("", status_code=201)
 def create_import(file: UploadFile, session: SessionDep, today: TodayDep) -> ImportResult:
     max_bytes = settings.max_upload_mb * 1024 * 1024
     data = file.file.read(max_bytes + 1)  # one byte over is enough to know it's too big
-    filename = (file.filename or "upload.csv")[:255]
+    # Postgres cannot store NUL, so a NUL in the name would make even the failure unrecordable.
+    filename = (file.filename or "").replace("\x00", "")[:255] or "upload.csv"
     try:
         record = run_import(session, filename=filename, data=data, today=today, max_bytes=max_bytes)
     except FileError as error:
@@ -40,7 +44,7 @@ def create_import(file: UploadFile, session: SessionDep, today: TodayDep) -> Imp
 @router.get("")
 def list_imports(
     session: SessionDep,
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: PageNumber = 1,
     page_size: Annotated[int, Query(ge=1, le=50)] = 10,
 ) -> Page[ImportSummary]:
     """Past imports, newest first (failed ones included, with their reason)."""
@@ -51,7 +55,7 @@ def list_imports(
 
 
 @router.get("/{import_id}/problems.csv", response_class=Response)
-def download_problems(import_id: int, session: SessionDep) -> Response:
+def download_problems(import_id: ImportId, session: SessionDep) -> Response:
     """Every problem of one import as a CSV the administrator can open in Excel."""
     record = _get_or_404(session, import_id)
     problems = imports_repo.all_problems(session, import_id)
@@ -63,15 +67,15 @@ def download_problems(import_id: int, session: SessionDep) -> Response:
 
 
 @router.get("/{import_id}")
-def get_import(import_id: int, session: SessionDep) -> ImportSummary:
+def get_import(import_id: ImportId, session: SessionDep) -> ImportSummary:
     return ImportSummary.model_validate(_get_or_404(session, import_id))
 
 
 @router.get("/{import_id}/problems")
 def list_problems(
-    import_id: int,
+    import_id: ImportId,
     session: SessionDep,
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: PageNumber = 1,
     page_size: Annotated[int, Query(ge=1, le=500)] = FIRST_PAGE_SIZE,
 ) -> Page[ProblemOut]:
     _get_or_404(session, import_id)

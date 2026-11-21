@@ -15,6 +15,10 @@ frontend/dist/
 
 # Assignment brief is confidential — never commit it
 *.pdf
+_brief/
 
 # Seed script output
 students_generated*.csv
+
+# Local audit notes
+AUDIT_REPORT.md

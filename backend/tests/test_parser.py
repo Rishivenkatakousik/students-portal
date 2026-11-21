@@ -141,3 +141,54 @@ def test_doubled_quotes_inside_quoted_value_are_unescaped():
 def test_leading_blank_lines_before_header_are_skipped_but_counted():
     parsed = parse(f"\n\n{HEADER}\n{row()}\n")
     assert parsed.records[0].line == 4
+
+
+def test_utf16_without_byte_order_mark_is_rejected():
+    error = file_error(f"{HEADER}\r\n{row()}\r\n".encode("utf-16-le"))
+    assert error.code == FileErrorCode.NOT_UTF8
+    assert "UTF-16" in error.message
+
+
+def test_unclosed_quote_closed_by_a_later_quote_rejects_file_instead_of_dropping_rows():
+    # Line 3's quote is closed by line 6's quoted name, so lines 3-6 read as one
+    # record; reporting it as one bad row would silently lose lines 4 and 5.
+    lines = [
+        row(),
+        row(student_id="STU00002", full_name='"Patel'),
+        row(student_id="STU00003"),
+        row(student_id="STU00004"),
+        row(student_id="STU00005", full_name='"Singh, Aarav"'),
+        row(student_id="STU00006"),
+    ]
+    error = file_error(("\n".join([HEADER, *lines]) + "\n").encode())
+    assert error.code == FileErrorCode.MALFORMED_CSV
+    assert "lines 3 to 6" in error.message
+
+
+def test_unclosed_quote_giving_the_wrong_field_count_rejects_file():
+    # The stray quote closes cleanly at the end of line 5's email, so csv raises
+    # nothing; the swallowed record just has the wrong number of fields.
+    lines = [
+        row(),
+        row(student_id="STU00002", full_name='"Patel'),
+        row(student_id="STU00003"),
+        row(student_id="STU00004", email='rohan@example.edu"'),
+        row(student_id="STU00005"),
+    ]
+    error = file_error(("\n".join([HEADER, *lines]) + "\n").encode())
+    assert error.code == FileErrorCode.MALFORMED_CSV
+    assert "lines 3 to 5" in error.message
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        b'{"students": [{"id": "T10-001", "name": "Asha"}]}\n',
+        f'{HEADER.replace("full_name", '"full_name"x')}\n{row()}\n'.encode(),
+    ],
+    ids=["json", "stray-quote-in-header"],
+)
+def test_unreadable_header_is_named_not_called_empty(data):
+    error = file_error(data)
+    assert error.code == FileErrorCode.MALFORMED_CSV
+    assert error.message.startswith("Line 1 should be the header row")

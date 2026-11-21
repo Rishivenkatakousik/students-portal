@@ -38,6 +38,7 @@ class FileError(Exception):
 @dataclass(frozen=True)
 class Record:
     line: int
+    end_line: int  # > line when a quoted value spans several lines
     fields: list[str]
     error: str | None = None  # set when the record itself could not be read
 
@@ -67,14 +68,18 @@ def parse_csv(data: bytes, max_bytes: int) -> ParsedFile:
         raise FileError(FileErrorCode.EMPTY_FILE, "The file is empty.")
 
     records = _read_records(text)
-    header_index = next((i for i, r in enumerate(records) if _has_content(r.fields)), None)
+    # An unreadable line has no fields but is not blank: it must stop here, or
+    # a JSON file would be called "empty" and a broken header would be skipped.
+    header_index = next((i for i, r in enumerate(records) if r.error or _has_content(r.fields)), None)
     if header_index is None:
         raise FileError(FileErrorCode.EMPTY_FILE, "The file is empty.")
     header = records[header_index]
     if header.error:
         raise FileError(
             FileErrorCode.MALFORMED_CSV,
-            f"The header row on line {header.line} could not be read: {header.error}",
+            f"Line {header.line} should be the header row, but it can't be read as CSV "
+            "(probably a quote (\") in the wrong place). Upload a CSV of student results "
+            f"whose first row is: {', '.join(REQUIRED_COLUMNS)}.",
         )
 
     columns, extra_columns = _map_header(header.fields)
@@ -84,6 +89,11 @@ def parse_csv(data: bytes, max_bytes: int) -> ParsedFile:
             FileErrorCode.NO_DATA_ROWS,
             "The file has a header row but no student rows.",
         )
+    for r in data_records:
+        # Quoted values may span lines, but one with the wrong number of fields
+        # means a stray quote swallowed the rows after it.
+        if r.end_line > r.line and len(r.fields) != len(header.fields):
+            raise FileError(FileErrorCode.MALFORMED_CSV, _run_together(r.line, r.end_line))
     return ParsedFile(
         columns=columns,
         header_width=len(header.fields),
@@ -92,15 +102,17 @@ def parse_csv(data: bytes, max_bytes: int) -> ParsedFile:
     )
 
 
+_UTF16_MESSAGE = (
+    "The file is saved as UTF-16 (Excel 'Unicode Text'). "
+    "In Excel use File > Save As > 'CSV UTF-8 (Comma delimited)' and upload again."
+)
+
+
 def _decode(data: bytes) -> str:
     if data.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
-        raise FileError(
-            FileErrorCode.NOT_UTF8,
-            "The file is saved as UTF-16 (Excel 'Unicode Text'). "
-            "In Excel use File > Save As > 'CSV UTF-8 (Comma delimited)' and upload again.",
-        )
+        raise FileError(FileErrorCode.NOT_UTF8, _UTF16_MESSAGE)
     try:
-        return data.decode("utf-8-sig")  # strips a UTF-8 byte order mark if present
+        text = data.decode("utf-8-sig")  # strips a UTF-8 byte order mark if present
     except UnicodeDecodeError as error:
         line = data[: error.start].count(b"\n") + 1
         raise FileError(
@@ -108,6 +120,12 @@ def _decode(data: bytes) -> str:
             f"The file is not UTF-8 text (first problem on line {line}). "
             "If it is a spreadsheet, use File > Save As > 'CSV UTF-8 (Comma delimited)'.",
         ) from None
+    # UTF-16 without a byte order mark is valid UTF-8 with a NUL after every letter.
+    if text.count("\x00") > len(text) // 4:
+        raise FileError(FileErrorCode.NOT_UTF8, _UTF16_MESSAGE)
+    # Postgres cannot store NUL, so one stray NUL would fail the whole import.
+    # As U+FFFD it is just a bad character: its cell is rejected like any other.
+    return text.replace("\x00", "�")
 
 
 def _read_records(text: str) -> list[Record]:
@@ -130,11 +148,23 @@ def _read_records(text: str) -> list[Record]:
                     f"Line {start} opens a quote (\") that is never closed, so the rest "
                     "of the file cannot be read. Fix that line and upload again.",
                 ) from None
-            records.append(Record(start, [], error=f"the row could not be read ({error})"))
+            if reader.line_num > start:
+                # The quote ran on until some later quote closed it: rejecting this
+                # as one bad row would silently drop every row it swallowed.
+                raise FileError(FileErrorCode.MALFORMED_CSV, _run_together(start, reader.line_num)) from None
+            records.append(Record(start, start, [], error=f"the row could not be read ({error})"))
         else:
-            records.append(Record(start, fields))
+            records.append(Record(start, reader.line_num, fields))
         last_line = reader.line_num
     return records
+
+
+def _run_together(start: int, end: int) -> str:
+    return (
+        f"Line {start} opens a quote (\") that isn't closed where it should be, so lines "
+        f"{start} to {end} run together and can't be read as separate rows. "
+        f"Fix the quotes on line {start} and upload again."
+    )
 
 
 def _has_content(fields: list[str]) -> bool:

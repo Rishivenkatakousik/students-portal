@@ -163,6 +163,36 @@ def test_request_without_a_file_is_explained(client):
     assert response.json()["error"]["message"] == "No file was uploaded. Choose a CSV file and try again."
 
 
+def test_nul_characters_are_rejected_and_stored_not_a_server_error(client, db_session):
+    # Postgres can't store NUL; the bad value must still reach the problems table.
+    response = upload(client, csv_bytes(row(), row(student_id="STU\x0002")))
+    assert response.status_code == 201
+    summary = response.json()["summary"]
+    assert (summary["imported"], summary["rejected"]) == (1, 1)
+    assert response.json()["problems"]["items"][0]["code"] == "INVALID_FORMAT"
+
+
+def test_nul_in_the_file_name_is_dropped(client):
+    # Built by hand: the test client would percent-encode the NUL, a browser or curl may not.
+    body = (
+        b'--b\r\nContent-Disposition: form-data; name="file"; filename="nul\x00.csv"\r\n'
+        b"Content-Type: text/csv\r\n\r\n" + csv_bytes(row()) + b"\r\n--b--\r\n"
+    )
+    response = client.post("/api/imports", content=body, headers={"Content-Type": "multipart/form-data; boundary=b"})
+    assert response.status_code == 201
+    assert response.json()["summary"]["filename"] == "nul.csv"
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["/api/imports/99999999999999999999", "/api/imports/0/problems", "/api/imports?page=100000000000000000000"],
+)
+def test_out_of_range_numbers_are_422_not_500(client, path):
+    response = client.get(path)
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "INVALID_REQUEST"
+
+
 def test_unknown_import_is_404(client):
     response = client.get("/api/imports/999")
     assert response.status_code == 404

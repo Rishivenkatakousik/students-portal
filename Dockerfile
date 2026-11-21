@@ -21,12 +21,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN useradd --create-home --uid 1000 app
 WORKDIR /app/backend
 
-# Install dependencies against a placeholder package, so this layer is reused
-# until pyproject.toml changes. The editable install points at /app/backend/app,
-# where the real code is copied next. Dev extras are included so the tests and
-# the seed script can run inside the container.
-COPY backend/pyproject.toml ./
-RUN mkdir app && touch app/__init__.py && pip install -e ".[dev]" && chown app:app /app/backend
+# Install the exact versions in requirements.lock, so every build gets the same
+# dependencies. Then install the package itself (no new dependencies) against a
+# placeholder, so this layer is reused until pyproject.toml or the lock changes.
+# The editable install points at /app/backend/app, where the real code is
+# copied next. Dev extras are included so the tests and the seed script can run
+# inside the container.
+COPY backend/pyproject.toml backend/requirements.lock ./
+RUN mkdir app && touch app/__init__.py \
+    && pip install -r requirements.lock \
+    && pip install --no-deps -e ".[dev]" \
+    && chown app:app /app/backend
 
 COPY --chown=app:app backend/ ./
 COPY --from=frontend /frontend/dist /app/frontend/dist

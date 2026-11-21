@@ -126,3 +126,9 @@ def test_extra_columns_do_not_affect_validation():
     result = run(row() + ",+91 98765 43210", header=HEADER + ",parent_phone")
     assert result.problems == []
     assert "parent_phone" not in result.valid_rows[0].data
+
+
+def test_nul_character_rejects_only_its_cell():
+    result = run(row(), row(student_id="STU00002", full_name="Ro\x00han Kaur"), row(student_id="STU00003"))
+    assert problems(result) == [(3, "full_name", ErrorCode.INVALID_FORMAT)]
+    assert imported_ids(result) == ["STU00001", "STU00003"]

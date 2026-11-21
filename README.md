@@ -61,11 +61,15 @@ One command (starts Postgres if needed, uses a separate `results_test` database)
 docker compose run --rm app pytest
 ```
 
-298 tests: every column rule and trap, file-level problems (encodings, quotes,
-headers, line endings), the exact counts for both sample files, the import API
+310 tests: every column rule and trap, file-level problems (encodings, quotes,
+headers, line endings, NUL bytes, non-CSV files), the exact counts for both sample files, the import API
 against Postgres (re-uploads, rollback on failure, concurrent uploads), the
 students and report API, grading boundaries, and a round trip where the seed
 generator and the importer must agree on every rejected line.
+
+The sample files in `backend/tests/fixtures/` are Es Magico's confidential
+sample pack, committed only so the golden-count tests run. Keep this
+repository private and do not redistribute them.
 
 ## Local development (without Docker for the app)
 
@@ -73,7 +77,7 @@ generator and the importer must agree on every rejected line.
 docker compose up -d db                     # Postgres on localhost:5433
 
 cd backend
-python3.13 -m venv .venv && .venv/bin/pip install -e ".[dev]"
+python3.13 -m venv .venv && .venv/bin/pip install -r requirements.lock -e ".[dev]"
 .venv/bin/python -m app.init_db              # create the tables
 .venv/bin/uvicorn app.main:app --reload --port 8080
 .venv/bin/pytest                            # in another terminal
@@ -142,7 +146,7 @@ backend/
       csv_import/ parser.py (file → rows), validators.py (one rule per column),
                   pipeline.py (row order, duplicates), report.py (error CSV)
   seed/           messy data generator and loader
-  tests/          pytest suite; fixtures/ holds the sample CSVs
+  tests/          pytest suite; fixtures/ holds the sample CSVs (confidential, see "Run the tests")
 frontend/
   src/api/        typed API client (axios) and response types
   src/hooks/      React Query hooks and cache keys, URL list state, debounce
