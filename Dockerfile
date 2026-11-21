@@ -36,6 +36,6 @@ EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=2)"
 
-# Apply database migrations, then serve. exec makes uvicorn PID 1 so it gets
-# Docker's stop signal and shuts down cleanly.
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8080"]
+# Create any missing tables (a no-op once they exist), then serve. exec makes
+# uvicorn PID 1 so it gets Docker's stop signal and shuts down cleanly.
+CMD ["sh", "-c", "python -m app.init_db && exec uvicorn app.main:app --host 0.0.0.0 --port 8080"]

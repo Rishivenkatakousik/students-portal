@@ -3,7 +3,7 @@
 ## Stack and why
 
 - **FastAPI (Python 3.13) with the standard `csv` module.** The import rules are the core of the task, and the standard library gets the hard parts right: strict dates, CSV quoting, exact decimals. Not pandas: it pads short rows with NaN (hiding wrong field counts), renumbers lines around blanks, and converts `"09"` or `""` before they can be reported.
-- **PostgreSQL, SQLAlchemy 2, Alembic.** `INSERT … ON CONFLICT` turns re-uploads into an upsert that reports new / updated / unchanged. CHECK constraints back up the validation; trigram indexes make search fast.
+- **PostgreSQL, SQLAlchemy 2.** Tables are created from the models on start-up (`python -m app.init_db`, a no-op once they exist); no migration tool, since the schema is fixed. `INSERT … ON CONFLICT` turns re-uploads into an upsert that reports new / updated / unchanged. CHECK constraints back up the validation; trigram indexes make search fast.
 - **React, TypeScript, Vite, TanStack Query, Tailwind, axios.** FastAPI serves the built app: one container, one origin, no CORS.
 
 ## Decisions on the rules

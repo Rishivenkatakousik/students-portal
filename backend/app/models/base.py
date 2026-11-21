@@ -3,7 +3,7 @@ from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
-    # Predictable constraint names, so migrations can refer to them.
+    # Predictable constraint names, so errors and the schema are easy to read.
     metadata = MetaData(
         naming_convention={
             "ix": "ix_%(table_name)s_%(column_0_name)s",

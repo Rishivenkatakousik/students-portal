@@ -1,7 +1,7 @@
 """Database fixtures for API tests.
 
 Tests use their own database (``results_test`` next to the app database) so
-they never touch real data. It is created and migrated on first use and
+they never touch real data. It is created (with its tables) on first use and
 emptied before each test. Unit tests that don't ask for ``client`` or
 ``db_session`` never connect to Postgres.
 """
@@ -20,11 +20,8 @@ TEST_DATABASE_URL = os.environ.get(
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
 from collections.abc import Iterator  # noqa: E402
-from pathlib import Path  # noqa: E402
 
 import pytest  # noqa: E402
-from alembic import command  # noqa: E402
-from alembic.config import Config  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.exc import OperationalError  # noqa: E402
@@ -32,11 +29,9 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from app.api.deps import get_today  # noqa: E402
 from app.core.database import SessionLocal, engine  # noqa: E402
+from app.init_db import create_schema  # noqa: E402
 from app.main import app  # noqa: E402
 from tests.helpers import TODAY  # noqa: E402
-
-BACKEND_DIR = Path(__file__).parent.parent
-
 
 def _create_test_database() -> None:
     url = make_url(TEST_DATABASE_URL)
@@ -59,13 +54,13 @@ def _create_test_database() -> None:
 
 
 @pytest.fixture(scope="session")
-def migrated_database() -> None:
+def test_schema() -> None:
     _create_test_database()
-    command.upgrade(Config(str(BACKEND_DIR / "alembic.ini")), "head")
+    create_schema(engine)
 
 
 @pytest.fixture
-def clean_database(migrated_database) -> None:
+def clean_database(test_schema) -> None:
     with engine.begin() as conn:
         conn.execute(text("TRUNCATE students, import_problems, imports RESTART IDENTITY CASCADE"))
 

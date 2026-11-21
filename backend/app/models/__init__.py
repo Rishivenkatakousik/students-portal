@@ -5,7 +5,7 @@ a second line of defence so a bug there can never store, say, a mark of 105.
 Total, percentage and grade are not stored: they are always computed from the
 marks (see ``app.services.grading``), so they can never disagree with them.
 
-Every model is imported here so ``Base.metadata`` (used by Alembic) sees all tables.
+Every model is imported here so ``Base.metadata`` (used by ``app.init_db``) sees all tables.
 """
 
 from app.models.base import Base

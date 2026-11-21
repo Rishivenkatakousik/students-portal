@@ -74,7 +74,7 @@ docker compose up -d db                     # Postgres on localhost:5433
 
 cd backend
 python3.13 -m venv .venv && .venv/bin/pip install -e ".[dev]"
-.venv/bin/alembic upgrade head
+.venv/bin/python -m app.init_db              # create the tables
 .venv/bin/uvicorn app.main:app --reload --port 8080
 .venv/bin/pytest                            # in another terminal
 
@@ -133,7 +133,7 @@ backend/
     frontend.py   serves the built React app (SPA fallback)
     core/         config, database session, JSON errors, the student column list
     api/          HTTP only: deps.py and routes/ (imports, students, grading, health)
-    models/       SQLAlchemy tables; alembic/ holds the migrations
+    models/       SQLAlchemy tables; init_db.py creates them (python -m app.init_db)
     schemas/      Pydantic response shapes
     repositories/ all SQL (search, sort, bulk upsert); never commits
     services/     business rules: grading.py (total, percentage, grade, pass/fail),
