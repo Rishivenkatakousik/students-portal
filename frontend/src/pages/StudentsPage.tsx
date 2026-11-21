@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useEffect, useId, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { api, type StudentListItem } from '../api'
+import { api, type StudentListItem, type StudentSort } from '../api'
 import { Pagination } from '../components/Pagination'
 import { formatNumber, formatPercentage } from '../format'
 import { useDebouncedValue } from '../hooks'
@@ -12,6 +12,18 @@ const DEFAULT_PAGE_SIZE = 25
 const CLASSES = Array.from({ length: 12 }, (_, i) => i + 1)
 const SECTIONS = ['A', 'B', 'C', 'D', 'E', 'F']
 const SEARCH_DELAY_MS = 300
+const DEFAULT_SORT: StudentSort = 'student_id'
+const SORTS: StudentSort[] = ['student_id', '-student_id', 'name', '-name', 'class', '-class', 'percentage', '-percentage']
+// Options for the phone sort menu (table headers are hidden on narrow screens).
+const SORT_OPTIONS: [StudentSort, string][] = [
+  ['student_id', 'Student ID'],
+  ['name', 'Name A–Z'],
+  ['-name', 'Name Z–A'],
+  ['class', 'Class (lowest first)'],
+  ['-class', 'Class (highest first)'],
+  ['-percentage', 'Percentage (highest first)'],
+  ['percentage', 'Percentage (lowest first)'],
+]
 
 type ListParams = {
   q: string
@@ -19,6 +31,7 @@ type ListParams = {
   section?: string
   page: number
   page_size: number
+  sort: StudentSort
 }
 
 /** Read the list state from the URL, ignoring anything invalid. */
@@ -37,6 +50,7 @@ function readParams(search: URLSearchParams): ListParams {
     section: section && SECTIONS.includes(section) ? section : undefined,
     page: page && page > 0 ? page : 1,
     page_size: size && PAGE_SIZES.includes(size) ? size : DEFAULT_PAGE_SIZE,
+    sort: SORTS.find((s) => s === search.get('sort')) ?? DEFAULT_SORT,
   }
 }
 
@@ -89,6 +103,20 @@ export function StudentsPage() {
             {SECTIONS.map((s) => (
               <option key={s} value={s}>
                 Section {s}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="sm:hidden">
+          <span className="sr-only">Sort by</span>
+          <select
+            className={control}
+            value={params.sort}
+            onChange={(e) => update({ sort: e.target.value === DEFAULT_SORT ? undefined : e.target.value })}
+          >
+            {SORT_OPTIONS.map(([value, label]) => (
+              <option key={value} value={value}>
+                Sort: {label}
               </option>
             ))}
           </select>
@@ -150,7 +178,13 @@ export function StudentsPage() {
               ? 'Searching…'
               : `${formatNumber(students.data.total)} ${students.data.total === 1 ? 'student' : 'students'}${filtered ? ' match' : ''}`}
           </p>
-          <StudentsTable students={students.data.items} loading={students.isFetching} listSearch={search.toString()} />
+          <StudentsTable
+            students={students.data.items}
+            loading={students.isFetching}
+            listSearch={search.toString()}
+            sort={params.sort}
+            onSort={(sort) => update({ sort: sort === DEFAULT_SORT ? undefined : sort })}
+          />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Pagination
               page={params.page}
@@ -230,21 +264,26 @@ function StudentsTable({
   students,
   loading,
   listSearch,
+  sort,
+  onSort,
 }: {
   students: StudentListItem[]
   loading: boolean
   listSearch: string
+  sort: StudentSort
+  onSort: (sort: StudentSort) => void
 }) {
+  const sortable = { sort, onSort }
   return (
     <div className={`${tableWrap} ${loading ? 'opacity-60' : ''} transition-opacity`} aria-busy={loading}>
       <table className={stackedTable}>
         <thead>
           <tr>
-            <th scope="col">Student ID</th>
-            <th scope="col">Name</th>
-            <th scope="col">Class</th>
+            <SortableHeader label="Student ID" column="student_id" {...sortable} />
+            <SortableHeader label="Name" column="name" {...sortable} />
+            <SortableHeader label="Class" column="class" {...sortable} />
             <th scope="col">Section</th>
-            <th scope="col">Percentage</th>
+            <SortableHeader label="Percentage" column="percentage" firstDescending {...sortable} />
             <th scope="col">Grade</th>
             <th scope="col">Result</th>
           </tr>
@@ -274,6 +313,44 @@ function StudentsTable({
         </tbody>
       </table>
     </div>
+  )
+}
+
+type SortColumn = 'student_id' | 'name' | 'class' | 'percentage'
+
+/** A column header that sorts the list; clicking again reverses the order. */
+function SortableHeader({
+  label,
+  column,
+  firstDescending = false,
+  sort,
+  onSort,
+}: {
+  label: string
+  column: SortColumn
+  firstDescending?: boolean // e.g. percentage: highest first is the useful start
+  sort: StudentSort
+  onSort: (sort: StudentSort) => void
+}) {
+  const active = sort.replace('-', '') === column
+  const descending = sort.startsWith('-')
+  const ascending: StudentSort = column
+  const reversed = `-${column}` as StudentSort
+  const next = active ? (descending ? ascending : reversed) : firstDescending ? reversed : ascending
+  return (
+    <th scope="col" aria-sort={active ? (descending ? 'descending' : 'ascending') : 'none'}>
+      <button
+        type="button"
+        className={`inline-flex cursor-pointer items-center gap-1 uppercase hover:text-ink ${active ? 'text-ink' : ''}`}
+        onClick={() => onSort(next)}
+      >
+        {label}
+        <span aria-hidden="true" className={active ? '' : 'opacity-30'}>
+          {active && descending ? '▼' : '▲'}
+        </span>
+        <span className="sr-only">, sort {next.startsWith('-') ? 'descending' : 'ascending'}</span>
+      </button>
+    </th>
   )
 }
 

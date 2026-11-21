@@ -16,7 +16,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3",
-    "httpx>=0.28",
+    # Starlette's TestClient wants httpx2 (httpx's successor, maintained by
+    # Pydantic; Starlette's own "full" extra depends on it). Pinned exactly.
+    "httpx2==2.16.0",
     "faker>=33",
 ]
 

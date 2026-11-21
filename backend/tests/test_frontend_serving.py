@@ -51,4 +51,20 @@ def test_files_outside_dist_are_never_served(client, path):
 def test_without_a_built_frontend_the_api_still_works(tmp_path):
     client = TestClient(create_app(frontend_dist=tmp_path / "missing"))
     assert client.get("/api/health").status_code == 200
+    response = client.get("/students")
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "FRONTEND_NOT_BUILT"
+    assert "npm run build" in response.json()["error"]["message"]
+
+
+def test_a_frontend_built_after_startup_is_served(tmp_path):
+    dist = tmp_path / "dist"
+    client = TestClient(create_app(frontend_dist=dist))  # nothing built yet
     assert client.get("/students").status_code == 404
+
+    (dist / "assets").mkdir(parents=True)  # now `npm run build` happens
+    (dist / "index.html").write_text("<title>Results Portal</title>")
+    (dist / "assets" / "app.js").write_text("ok")
+
+    assert "Results Portal" in client.get("/students").text
+    assert client.get("/assets/app.js").text == "ok"

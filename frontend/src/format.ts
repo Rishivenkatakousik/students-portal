@@ -27,6 +27,11 @@ export function formatDate(isoDate: string): string {
   })
 }
 
+/** "21 Nov 2026, 16:05" in the viewer's own time zone. */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
+}
+
 /** Readable names for CSV columns, as an administrator would say them. */
 export const FIELD_LABELS: Record<string, string> = {
   student_id: 'Student ID',

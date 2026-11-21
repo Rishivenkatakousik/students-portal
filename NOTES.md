@@ -20,6 +20,7 @@
 
 - A student in a later file is **updated**; identical data is **unchanged**, so the same file twice gives `0 new, 0 updated, 4,685 unchanged`. Students missing from a file are kept.
 - **Each import is one transaction:** a failure part-way imports nothing and is recorded. Rows are saved in ID order; without that, two simultaneous uploads deadlocked in testing.
+- **Error report:** every problem can be downloaded as a CSV for Excel. Cells copied from the upload that start with `= + - @` are made inert (CSV injection); plain numbers like `-5` stay readable.
 - **10 MB limit**, checked in the browser and the server. Imports run in the request: 5,000 rows take about 0.7 s, 50,000 about 6 s. The UI shows upload progress.
 
 ## Grading scheme
@@ -32,6 +33,6 @@ Exact counts for both sample files, plus every small-file problem by line and co
 
 ## Missing, and next
 
-- **Missing:** sign-in, downloading errors as CSV, a past-imports page (the API stores them), editing or deleting students, accent-insensitive search ("Zoe" misses "Zoë"), committed frontend tests, CI.
-- **Next:** admin sign-in; error-report download; Playwright tests and CI; background imports with progress for much larger files; `unaccent` search.
+- **Missing:** sign-in, editing or deleting students, opening a past import's full problem list in the UI (its CSV report is downloadable), accent-insensitive search ("Zoe" misses "Zoë"), committed frontend tests, CI.
+- **Next:** admin sign-in; Playwright tests and CI; background imports with progress for much larger files; `unaccent` search.
 - **Trade-offs:** the image (~380 MB) includes pytest and Faker so tests and seeding run in it; ages use the server's date (UTC in Docker); page-number pagination suits thousands of students, not millions.

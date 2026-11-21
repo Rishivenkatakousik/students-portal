@@ -99,7 +99,7 @@ def _upsert_students(session: Session, rows: list[ValidRow], import_id: int) -> 
     """
     new = updated = 0
     ordered = sorted(rows, key=lambda r: r.data["student_id"])
-    for batch in batched(ordered, BATCH_SIZE):
+    for batch in batched(ordered, BATCH_SIZE, strict=False):  # last batch may be shorter
         for inserted in _upsert_batch(session, [r.data | {"last_import_id": import_id} for r in batch]):
             if inserted:
                 new += 1

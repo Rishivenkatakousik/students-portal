@@ -186,4 +186,14 @@ export const api = {
     const { data } = await http.get<GradingScheme>('/grading-scheme')
     return data
   },
+
+  async imports(page = 1, pageSize = 10): Promise<Page<ImportSummary>> {
+    const { data } = await http.get<Page<ImportSummary>>('/imports', { params: { page, page_size: pageSize } })
+    return data
+  },
+
+  /** A plain link target: the browser downloads the CSV itself. */
+  problemsCsvUrl(importId: number): string {
+    return `/api/imports/${importId}/problems.csv`
+  },
 }

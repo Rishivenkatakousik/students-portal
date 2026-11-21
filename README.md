@@ -6,9 +6,10 @@ explained in plain language, and any student can be found and their report
 opened.
 
 - **Import** – upload a CSV, see rows read / imported / rejected and a table of
-  row problems ("Maths: 105 is outside the allowed range 0 to 100").
-- **Students** – search by name or ID, filter by class and section, page
-  through thousands of students.
+  row problems ("Maths: 105 is outside the allowed range 0 to 100"); download
+  them as a CSV error report; see recent imports.
+- **Students** – search by name or ID, filter by class and section, sort by
+  column, page through thousands of students.
 - **Student report** – details, marks per subject, total, percentage, grade and
   pass/fail (with the reason), printable.
 
@@ -60,7 +61,7 @@ One command (starts Postgres if needed, uses a separate `results_test` database)
 docker compose run --rm app pytest
 ```
 
-275 tests: every column rule and trap, file-level problems (encodings, quotes,
+298 tests: every column rule and trap, file-level problems (encodings, quotes,
 headers, line endings), the exact counts for both sample files, the import API
 against Postgres (re-uploads, rollback on failure, concurrent uploads), the
 students and report API, grading boundaries, and a round trip where the seed
@@ -114,8 +115,10 @@ shape: `{"error": {"code": "...", "message": "..."}}`.
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/api/imports` | Upload a CSV (multipart field `file`); returns the summary and the first 50 problems |
+| `GET` | `/api/imports?page=&page_size=` | Past imports, newest first (failed ones included) |
 | `GET` | `/api/imports/{id}` | Summary of one import |
 | `GET` | `/api/imports/{id}/problems?page=&page_size=` | Row problems, ordered by line |
+| `GET` | `/api/imports/{id}/problems.csv` | Error report download (opens in Excel; formula-safe) |
 | `GET` | `/api/students?q=&grade_level=&section=&page=&page_size=&sort=` | Search, filter and page through students |
 | `GET` | `/api/students/{student_id}` | One student's report (ID is case-insensitive) |
 | `GET` | `/api/grading-scheme` | Grade bands and pass rules |

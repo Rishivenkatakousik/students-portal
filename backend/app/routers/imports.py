@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Query, UploadFile
+from fastapi import APIRouter, Query, Response, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -8,6 +8,7 @@ from app.config import settings
 from app.deps import SessionDep, TodayDep
 from app.errors import AppError
 from app.importer.parser import FileError, FileErrorCode
+from app.importer.report import problems_csv, report_filename
 from app.importer.service import ImportFailed, run_import
 from app.models import Import, ImportProblem
 from app.schemas import ImportResult, ImportSummary, Page, ProblemOut
@@ -32,6 +33,38 @@ def create_import(file: UploadFile, session: SessionDep, today: TodayDep) -> Imp
     return ImportResult(
         summary=ImportSummary.model_validate(record),
         problems=_problem_page(session, record.id, page=1, page_size=FIRST_PAGE_SIZE),
+    )
+
+
+@router.get("")
+def list_imports(
+    session: SessionDep,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=50)] = 10,
+) -> Page[ImportSummary]:
+    """Past imports, newest first (failed ones included, with their reason)."""
+    total = session.scalar(select(func.count()).select_from(Import)) or 0
+    records = session.scalars(
+        select(Import).order_by(Import.id.desc()).offset((page - 1) * page_size).limit(page_size)
+    )
+    return Page(
+        items=[ImportSummary.model_validate(r) for r in records], total=total, page=page, page_size=page_size
+    )
+
+
+@router.get("/{import_id}/problems.csv", response_class=Response)
+def download_problems(import_id: int, session: SessionDep) -> Response:
+    """Every problem of one import as a CSV the administrator can open in Excel."""
+    record = _get_or_404(session, import_id)
+    problems = session.scalars(
+        select(ImportProblem)
+        .where(ImportProblem.import_id == import_id)
+        .order_by(ImportProblem.line, ImportProblem.id)
+    )
+    return Response(
+        content=problems_csv(problems),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{report_filename(record.filename)}"'},
     )
 
 

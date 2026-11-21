@@ -343,11 +343,15 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 2. `docker compose run --rm app pytest` green.
 3. Read through the diff once more for leftover debug code, TODOs and unused files; make sure the PDF isn't in git history.
 - Commit any fixes: `fix: ...`
+- **Done:** a "fresh clone" built from exactly the files git would ship (`git ls-files --cached --others --exclude-standard`, 72 files; no PDF, no node_modules/.venv; fixture bytes identical) passed the README end to end: no-cache build, migrations on an empty database, `docker compose run --rm app pytest` (276), the seed command (Match), the whole Verification list in a browser, and the local-development section. PDF never appears in git history. Ruff (pyflakes, bugbear) clean on app/seed/tests.
+- **Fixed here:** (1) the test run printed a deprecation warning — switched the test client to `httpx2` (Starlette's own `full` extra depends on it; maintained by Pydantic; pinned 2.16.0, a month old); (2) following the README's local steps in order, a backend started *before* `npm run build` never served the app — the build is now looked up per request, and a clear `FRONTEND_NOT_BUILT` message explains what to do; (3) `batched(..., strict=False)` made explicit.
 
 ### Step 15 — Bonuses (only if time)
 1. `GET /api/imports/{id}/problems.csv` + "Download error report" button.
 2. Sort by clicking table headers.
 3. Import history list on the Import page.
+- **Done:** all three. Error report `GET /api/imports/{id}/problems.csv` (`app/importer/report.py`): UTF-8 BOM for Excel, CRLF, rows in line order, safe download filename, and CSV-injection guard — cells starting `= + - @ tab CR` get a leading apostrophe unless they're plain numbers (`-5` stays). Sortable ID/Name/Class/Percentage headers (`aria-sort`; percentage starts highest-first; `sort` in the URL, invalid → ID) plus a sort menu on phones. "Recent imports" (newest 10, failed ones with their reason, per-import CSV link) from `GET /api/imports`. 298 backend tests.
+- **Fixed here:** history file names were clipped without "…" on phones (truncation sat on a grid cell) — now they wrap on phones and truncate with "…" on desktop.
 
 ## Verification
 - `pytest` green, including both golden counts.

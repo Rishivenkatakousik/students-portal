@@ -248,9 +248,9 @@ def generate(rows: int, error_rate: float, seed: int, today: date) -> Generated:
 
 
 def upload(base_url: str, filename: str, content: bytes) -> dict:
-    import httpx  # only needed for --upload
+    import httpx2  # only needed for --upload
 
-    response = httpx.post(
+    response = httpx2.post(
         f"{base_url.rstrip('/')}/api/imports",
         files={"file": (filename, content, "text/csv")},
         timeout=300,
