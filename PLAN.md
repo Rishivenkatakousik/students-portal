@@ -296,6 +296,7 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 3. Table: Student ID, Name (link), Class, Section, Percentage, Grade.
 4. States: skeleton rows while loading (`keepPreviousData` to avoid flicker), empty DB ("No students yet — Import a CSV" link), no match ("No students match 'xyz'" + Clear search), error + Retry.
 - **Done when:** with the sample imported, search "d'souza", filter class 9 section B, page through, browser back restores the previous view.
+- **Built notes:** URL params `q`, `class`, `section`, `page`, `size` (invalid values fall back to defaults). URL updates are built from `window.location.search`, not the render's params: two quick filter changes otherwise overwrite each other (verified — React Router's functional `setSearchParams` doesn't queue either). Added a Result (Pass/Fail) column; no-match message names the active filters; "page N is empty" state for out-of-range pages.
 - Commit: `feat(frontend): students list with search, filters and pagination`
 
 ### Step 10 — Student report page
