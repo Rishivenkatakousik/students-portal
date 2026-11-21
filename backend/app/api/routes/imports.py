@@ -9,7 +9,7 @@ from app.core.errors import AppError
 from app.models import Import
 from app.repositories import imports as imports_repo
 from app.schemas.common import Page
-from app.schemas.imports import ImportResult, ImportSummary, ProblemOut
+from app.schemas.imports import ImportLimits, ImportResult, ImportSummary, ProblemOut
 from app.services.csv_import.parser import FileError, FileErrorCode
 from app.services.csv_import.report import problems_csv, report_filename
 from app.services.imports import ImportFailed, run_import
@@ -52,6 +52,12 @@ def list_imports(
     return Page(
         items=[ImportSummary.model_validate(r) for r in records], total=total, page=page, page_size=page_size
     )
+
+
+@router.get("/limits")
+def import_limits() -> ImportLimits:
+    """The upload limit, so the browser can refuse a too-large file before sending it."""
+    return ImportLimits(max_upload_mb=settings.max_upload_mb)
 
 
 @router.get("/{import_id}/problems.csv", response_class=Response)

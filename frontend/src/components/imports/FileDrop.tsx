@@ -5,10 +5,12 @@ import { cn } from '@/lib/utils'
 
 export function FileDrop({
   disabled,
+  maxMb,
   onChoose,
   className,
 }: {
   disabled: boolean
+  maxMb?: number // the server's limit, once known
   onChoose: (file: File | undefined) => void
   className?: string
 }) {
@@ -41,7 +43,7 @@ export function FileDrop({
       </span>
       <p className="font-display text-xl font-semibold tracking-tight">Drop your CSV here</p>
       <p className="text-muted-foreground" id={hintId}>
-        Exported from Excel or Google Sheets · up to 10 MB
+        Exported from Excel or Google Sheets{maxMb !== undefined && ` · up to ${maxMb} MB`}
       </p>
       <Button
         variant="outline"

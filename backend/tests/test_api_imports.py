@@ -45,7 +45,7 @@ def test_small_file_import(client, db_session):
         "student_id": "STU00003",
         "field": "date_of_birth",
         "code": "OUT_OF_RANGE",
-        "message": "1970-01-01 makes the student 56 years old; students must be 5 to 25",
+        "message": '"1970-01-01" makes the student 56 years old; students must be 5 to 25',
         "raw_value": "1970-01-01",
     }
     assert student_count(db_session) == 16
@@ -191,6 +191,11 @@ def test_out_of_range_numbers_are_422_not_500(client, path):
     response = client.get(path)
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "INVALID_REQUEST"
+
+
+def test_upload_limit_is_published_for_the_browser(client, monkeypatch):
+    monkeypatch.setattr(settings, "max_upload_mb", 3)
+    assert client.get("/api/imports/limits").json() == {"max_upload_mb": 3}
 
 
 def test_unknown_import_is_404(client):

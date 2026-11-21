@@ -160,6 +160,11 @@ def test_unknown_student_is_404_with_a_message(school):
     }
 
 
+def test_unknown_student_message_does_not_echo_a_huge_id(client):
+    message = client.get("/api/students/" + "A" * 5000).json()["error"]["message"]
+    assert len(message) < 100
+
+
 def test_grading_scheme_is_published(client):
     body = client.get("/api/grading-scheme").json()
     assert [(b["grade"], b["min_percentage"]) for b in body["bands"]] == [

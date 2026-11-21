@@ -151,12 +151,12 @@ def validate_date_of_birth(raw: str, today: date) -> date:
         raise FieldError(ErrorCode.INVALID_FORMAT, f"{_show(value)} is not a real date") from None
 
     if born > today:
-        raise FieldError(ErrorCode.OUT_OF_RANGE, f"{value} is in the future")
+        raise FieldError(ErrorCode.OUT_OF_RANGE, f"{_show(value)} is in the future")
     age = age_on(born, today)
     if not (MIN_AGE <= age <= MAX_AGE):
         raise FieldError(
             ErrorCode.OUT_OF_RANGE,
-            f"{value} makes the student {age} years old; students must be {MIN_AGE} to {MAX_AGE}",
+            f"{_show(value)} makes the student {age} years old; students must be {MIN_AGE} to {MAX_AGE}",
         )
     return born
 
@@ -172,7 +172,7 @@ def validate_grade_level(raw: str) -> int:
     if not (MIN_GRADE <= grade <= MAX_GRADE):
         raise FieldError(
             ErrorCode.OUT_OF_RANGE,
-            f"{value} is outside the allowed range {MIN_GRADE} to {MAX_GRADE}",
+            f"{_show(value)} is outside the allowed range {MIN_GRADE} to {MAX_GRADE}",
         )
     return grade
 
@@ -195,7 +195,7 @@ def validate_mark(raw: str) -> Decimal:
     if not (MIN_MARK <= mark <= MAX_MARK):
         raise FieldError(
             ErrorCode.OUT_OF_RANGE,
-            f"{value} is outside the allowed range {MIN_MARK} to {MAX_MARK}",
+            f"{_show(value)} is outside the allowed range {MIN_MARK} to {MAX_MARK}",
         )
     return mark + 0  # "+ 0" turns "-0" into plain 0
 

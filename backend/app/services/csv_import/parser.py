@@ -38,7 +38,6 @@ class FileError(Exception):
 @dataclass(frozen=True)
 class Record:
     line: int
-    end_line: int  # > line when a quoted value spans several lines
     fields: list[str]
     error: str | None = None  # set when the record itself could not be read
 
@@ -89,11 +88,6 @@ def parse_csv(data: bytes, max_bytes: int) -> ParsedFile:
             FileErrorCode.NO_DATA_ROWS,
             "The file has a header row but no student rows.",
         )
-    for r in data_records:
-        # Quoted values may span lines, but one with the wrong number of fields
-        # means a stray quote swallowed the rows after it.
-        if r.end_line > r.line and len(r.fields) != len(header.fields):
-            raise FileError(FileErrorCode.MALFORMED_CSV, _run_together(r.line, r.end_line))
     return ParsedFile(
         columns=columns,
         header_width=len(header.fields),
@@ -128,43 +122,71 @@ def _decode(data: bytes) -> str:
     return text.replace("\x00", "�")
 
 
+_STRAY_QUOTE = (
+    'This row has a quote (") in the wrong place, so its columns can\'t be told apart. '
+    "Remove the stray quote, or put the whole value in quotes."
+)
+_UNCLOSED_QUOTE = (
+    'This row opens a quote (") that is not closed on the same line, so its columns '
+    "can't be told apart. Close or remove the quote. The rows after it were read normally."
+)
+
+
 def _read_records(text: str) -> list[Record]:
-    # newline="" lets csv see \r\n, \n and lone \r line endings itself, and keeps
-    # newlines inside quoted values. strict=True makes an unclosed quote an error
-    # instead of silently swallowing the rest of the file into one value.
-    reader = csv.reader(io.StringIO(text, newline=""), strict=True, skipinitialspace=True)
+    # Split into physical lines exactly as csv would (\r\n, \n or a lone \r),
+    # keeping the endings so quoted values can still span lines.
+    lines = io.StringIO(text, newline="").readlines()
     records: list[Record] = []
-    last_line = 0
-    while True:
-        start = last_line + 1
-        try:
-            fields = next(reader)
-        except StopIteration:
-            break
-        except csv.Error as error:
-            if str(error) == "unexpected end of data":
-                raise FileError(
-                    FileErrorCode.MALFORMED_CSV,
-                    f"Line {start} opens a quote (\") that is never closed, so the rest "
-                    "of the file cannot be read. Fix that line and upload again.",
-                ) from None
-            if reader.line_num > start:
-                # The quote ran on until some later quote closed it: rejecting this
-                # as one bad row would silently drop every row it swallowed.
-                raise FileError(FileErrorCode.MALFORMED_CSV, _run_together(start, reader.line_num)) from None
-            records.append(Record(start, start, [], error=f"the row could not be read ({error})"))
-        else:
-            records.append(Record(start, reader.line_num, fields))
-        last_line = reader.line_num
+    width: int | None = None  # the header's field count, once it has been read
+    pos = 0  # lines[pos] is the next line to read; its line number is pos + 1
+
+    while pos < len(lines):
+        # strict=True makes a misplaced or unclosed quote an error instead of
+        # silently merging text. The reader is restarted after a bad quote.
+        reader = csv.reader(iter(lines[pos:]), strict=True, skipinitialspace=True)
+        offset = pos
+        while True:
+            start = pos + 1
+            try:
+                fields = next(reader)
+            except StopIteration:
+                pos = len(lines)
+                break
+            except csv.Error:
+                end = offset + reader.line_num
+                if end > start:
+                    # A quote opened on this line ran on to a later quote (or the end of
+                    # the file), swallowing the lines in between. Reject only this line
+                    # and read the following lines again from scratch.
+                    records.append(_broken_row(start, lines[start - 1], _UNCLOSED_QUOTE))
+                    pos = start
+                    break
+                message = _UNCLOSED_QUOTE if lines[start - 1].count('"') % 2 else _STRAY_QUOTE
+                records.append(_broken_row(start, lines[start - 1], message))
+                pos = end
+                continue
+            end = offset + reader.line_num
+            if end > start and width is not None and len(fields) != width:
+                # Quoted values may span lines, but with the wrong number of fields
+                # this is a stray quote that closed on a later line: same as above.
+                records.append(_broken_row(start, lines[start - 1], _UNCLOSED_QUOTE))
+                pos = start
+                break
+            records.append(Record(start, fields))
+            if width is None and _has_content(fields):
+                width = len(fields)
+            pos = end
     return records
 
 
-def _run_together(start: int, end: int) -> str:
-    return (
-        f"Line {start} opens a quote (\") that isn't closed where it should be, so lines "
-        f"{start} to {end} run together and can't be read as separate rows. "
-        f"Fix the quotes on line {start} and upload again."
-    )
+def _broken_row(line: int, text: str, message: str) -> Record:
+    """A row whose quotes can't be parsed, with its fields read leniently.
+
+    The lenient fields are only used to show which student the row was for (its
+    ID column usually survives a stray quote elsewhere in the row).
+    """
+    fields = next(csv.reader([text.rstrip("\r\n")], skipinitialspace=True), [])
+    return Record(line, fields, error=message)
 
 
 def _has_content(fields: list[str]) -> bool:

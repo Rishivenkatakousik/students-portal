@@ -9,29 +9,28 @@ import { UploadError } from '../components/imports/UploadError'
 import { UploadProgress } from '../components/imports/UploadProgress'
 import { PageHeader } from '../components/PageHeader'
 import { REQUIRED_COLUMNS } from '../constants/fields'
-import { useUploadImport } from '../hooks/queries'
+import { useImportLimits, useUploadImport } from '../hooks/queries'
 import { formatBytes } from '../utils/format'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-
-// Mirrors MAX_UPLOAD_MB on the backend, so an oversized file is refused
-// before it is uploaded. The server still enforces its own limit.
-const MAX_UPLOAD_MB = 10
 
 export function ImportPage() {
   const [file, setFile] = useState<File | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const upload = useUploadImport(setProgress)
+  // Read from the server, so an oversized file is refused before it is sent.
+  // Until it loads (or if it fails) the server's own check still applies.
+  const maxUploadMb = useImportLimits().data?.max_upload_mb
 
   function choose(chosen: File | undefined) {
     if (!chosen) return
     upload.reset() // results on screen belong to the previous file
     setFile(chosen)
     setLocalError(
-      chosen.size > MAX_UPLOAD_MB * 1024 * 1024
-        ? `This file is ${formatBytes(chosen.size)}; the limit is ${MAX_UPLOAD_MB} MB. Split it into smaller files and upload them one by one.`
+      maxUploadMb !== undefined && chosen.size > maxUploadMb * 1024 * 1024
+        ? `This file is ${formatBytes(chosen.size)}; the limit is ${maxUploadMb} MB. Split it into smaller files and upload them one by one.`
         : null,
     )
   }
@@ -60,7 +59,7 @@ export function ImportPage() {
       />
 
       <section aria-label="Upload a file" className="flex flex-wrap gap-4">
-        <FileDrop className="flex-[3_1_420px]" disabled={upload.isPending} onChoose={choose} />
+        <FileDrop className="flex-[3_1_420px]" disabled={upload.isPending} maxMb={maxUploadMb} onChoose={choose} />
 
         <Card className="flex-[2_1_320px] gap-5 rounded-3xl p-6 shadow-none">
           {file ? (

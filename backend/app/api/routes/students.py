@@ -33,5 +33,7 @@ def list_students(
 def get_student(student_id: str, session: SessionDep, today: TodayDep) -> StudentReport:
     student = students_repo.get_student(session, student_id.strip().upper())
     if student is None:
-        raise AppError(404, "STUDENT_NOT_FOUND", f'There is no student with ID "{student_id}".')
+        # Shortened: the ID comes straight from the URL and may be any length.
+        shown = student_id if len(student_id) <= 40 else student_id[:39] + "…"
+        raise AppError(404, "STUDENT_NOT_FOUND", f'There is no student with ID "{shown}".')
     return build_report(student, today)

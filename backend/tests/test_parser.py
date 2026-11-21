@@ -64,13 +64,6 @@ def test_binary_file_is_rejected():
     assert file_error(png).code == FileErrorCode.NOT_UTF8
 
 
-def test_unclosed_quote_rejects_file_instead_of_swallowing_rows():
-    text = f'{HEADER}\n{row()}\n{row(full_name='"Patel, Sahil')}\n{row(student_id="STU00003")}\n'
-    error = file_error(text.encode())
-    assert error.code == FileErrorCode.MALFORMED_CSV
-    assert "Line 3" in error.message
-
-
 def test_bom_and_crlf_are_handled():
     parsed = parse_csv(codecs.BOM_UTF8 + f"{HEADER}\r\n{row()}\r\n".encode(), LIMIT)
     assert parsed.columns["student_id"] == 0
@@ -147,37 +140,6 @@ def test_utf16_without_byte_order_mark_is_rejected():
     error = file_error(f"{HEADER}\r\n{row()}\r\n".encode("utf-16-le"))
     assert error.code == FileErrorCode.NOT_UTF8
     assert "UTF-16" in error.message
-
-
-def test_unclosed_quote_closed_by_a_later_quote_rejects_file_instead_of_dropping_rows():
-    # Line 3's quote is closed by line 6's quoted name, so lines 3-6 read as one
-    # record; reporting it as one bad row would silently lose lines 4 and 5.
-    lines = [
-        row(),
-        row(student_id="STU00002", full_name='"Patel'),
-        row(student_id="STU00003"),
-        row(student_id="STU00004"),
-        row(student_id="STU00005", full_name='"Singh, Aarav"'),
-        row(student_id="STU00006"),
-    ]
-    error = file_error(("\n".join([HEADER, *lines]) + "\n").encode())
-    assert error.code == FileErrorCode.MALFORMED_CSV
-    assert "lines 3 to 6" in error.message
-
-
-def test_unclosed_quote_giving_the_wrong_field_count_rejects_file():
-    # The stray quote closes cleanly at the end of line 5's email, so csv raises
-    # nothing; the swallowed record just has the wrong number of fields.
-    lines = [
-        row(),
-        row(student_id="STU00002", full_name='"Patel'),
-        row(student_id="STU00003"),
-        row(student_id="STU00004", email='rohan@example.edu"'),
-        row(student_id="STU00005"),
-    ]
-    error = file_error(("\n".join([HEADER, *lines]) + "\n").encode())
-    assert error.code == FileErrorCode.MALFORMED_CSV
-    assert "lines 3 to 5" in error.message
 
 
 @pytest.mark.parametrize(

@@ -40,7 +40,7 @@ def test_harmless_mess_is_present_and_still_imports():
 
     assert text.startswith("﻿") and "\r\n" in text
     assert '", ' in text or ', ' in text  # quoted "Last, First" names
-    assert "stu0" in text  # lower-case IDs
+    assert "gen0" in text  # lower-case IDs
     assert generated.expected_rejected == 0
     result = process(parse_csv(text.encode(), 10 * 1024 * 1024), TODAY)
     assert result.problems == []
@@ -75,3 +75,12 @@ def test_generated_file_through_the_api(client):
         generated.expected_rejected,
     )
     assert summary["new"] == generated.expected_imported
+
+
+def test_generated_ids_use_their_own_prefix_so_seeding_never_overwrites_real_students():
+    default = generate(rows=200, error_rate=0.0, seed=1, today=TODAY)
+    assert "GEN00001," in default.text and "STU0" not in default.text
+    custom = generate(rows=200, error_rate=0.3, seed=1, today=TODAY, id_prefix="T9")
+    result = process(parse_csv(custom.text.encode(), 10 * 1024 * 1024), TODAY)
+    assert (result.rows_read, len(result.valid_rows)) == (custom.expected_read, custom.expected_imported)
+    assert all(r.data["student_id"].startswith("T9") for r in result.valid_rows)

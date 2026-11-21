@@ -132,3 +132,55 @@ def test_nul_character_rejects_only_its_cell():
     result = run(row(), row(student_id="STU00002", full_name="Ro\x00han Kaur"), row(student_id="STU00003"))
     assert problems(result) == [(3, "full_name", ErrorCode.INVALID_FORMAT)]
     assert imported_ids(result) == ["STU00001", "STU00003"]
+
+
+# --- quotes that are never closed: reject that row, re-read the rest ----------
+
+
+def test_unclosed_quote_at_the_end_rejects_only_that_row():
+    result = run(row(), row(student_id="STU00002", full_name='"Patel'), row(student_id="STU00003"))
+    assert problems(result) == [(3, None, ErrorCode.INVALID_FORMAT)]
+    assert imported_ids(result) == ["STU00001", "STU00003"]
+    assert result.rows_read == 3
+
+
+def test_unclosed_quote_closed_by_a_later_quote_does_not_swallow_rows():
+    # Line 3's quote would otherwise run on to line 6's quoted name, silently
+    # merging lines 3-6 into one rejected record.
+    result = run(
+        row(),
+        row(student_id="STU00002", full_name='"Patel'),
+        row(student_id="STU00003"),
+        row(student_id="STU00004"),
+        row(student_id="STU00005", full_name='"Singh, Aarav"'),
+        row(student_id="STU00006"),
+    )
+    assert problems(result) == [(3, None, ErrorCode.INVALID_FORMAT)]
+    assert imported_ids(result) == ["STU00001", "STU00003", "STU00004", "STU00005", "STU00006"]
+    assert result.rows_read == 6
+
+
+def test_unclosed_quote_closing_cleanly_on_a_later_line_does_not_swallow_rows():
+    # The stray quote closes at the end of line 5's email, so csv raises nothing:
+    # the merged record just has the wrong number of fields.
+    result = run(
+        row(),
+        row(student_id="STU00002", full_name='"Patel'),
+        row(student_id="STU00003"),
+        row(student_id="STU00004", email='rohan@example.edu"'),
+        row(student_id="STU00005"),
+    )
+    assert problems(result) == [(3, None, ErrorCode.INVALID_FORMAT), (5, "email", ErrorCode.INVALID_FORMAT)]
+    assert imported_ids(result) == ["STU00001", "STU00003", "STU00005"]
+
+
+def test_broken_quote_row_keeps_its_student_id_and_explains_the_quote():
+    result = run(row(), row(student_id="STU00002", full_name='"Patel'), row(student_id="STU00003"))
+    problem = result.problems[0]
+    assert problem.student_id == "STU00002"
+    assert problem.message.startswith('This row opens a quote (")')
+
+
+def test_stray_quote_message_is_plain_language():
+    result = run('"STU00002"x,' + row().split(",", 1)[1])
+    assert result.problems[0].message.startswith('This row has a quote (") in the wrong place')

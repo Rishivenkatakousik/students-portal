@@ -3,6 +3,9 @@
     python -m seed.generate --rows 5000 --out messy.csv
     python -m seed.generate --rows 5000 --upload http://localhost:8080
 
+Student IDs are GEN00001, GEN00002, ... so loading generated data never
+overwrites students imported from real files (--id-prefix changes "GEN").
+
 Every row is built knowing whether the importer should accept it, so the script
 prints the counts the portal ought to report (and, with --upload, compares them
 with what it actually reported). Two kinds of mess are added:
@@ -33,6 +36,7 @@ from faker import Faker
 from app.core.student_fields import MARK_FIELDS, REQUIRED_COLUMNS
 
 SECTIONS = "ABCDEF"
+DEFAULT_ID_PREFIX = "GEN"
 EXTRA_COLUMN = "parent_phone"
 UNICODE_NAMES = ["Zoë", "Bjørn", "Anaïs", "Søren", "Renée", "José", "Chloé"]
 APOSTROPHE_SURNAMES = ["D'Souza", "O'Brien", "D'Costa", "D'Mello"]
@@ -77,12 +81,12 @@ def _mark(ability: float, rng: random.Random) -> str:
     return f"{value:.1f}" if rng.random() < 0.3 else str(round(value))
 
 
-def clean_student(index: int, fake: Faker, rng: random.Random, today: date) -> Row:
+def clean_student(index: int, fake: Faker, rng: random.Random, today: date, id_prefix: str) -> Row:
     first, last = fake.first_name(), fake.last_name()
     grade = rng.randint(1, 12)
     ability = rng.gauss(62, 14)
     values = {
-        "student_id": f"STU{index:05d}",
+        "student_id": f"{id_prefix}{index:05d}",
         "full_name": f"{first} {last}",
         "email": f"{_email_local(first, last, rng)}@example.edu",
         "date_of_birth": _birth_date(grade, today, rng).isoformat(),
@@ -170,7 +174,7 @@ BREAKING: dict[str, Callable[[Row, random.Random, date], None]] = {
 }
 
 
-def _duplicate(row: Row, earlier: list[Row], rng: random.Random) -> bool:
+def _duplicate(row: Row, earlier: list[Row], rng: random.Random, id_prefix: str) -> bool:
     """Reuse an earlier row's ID (sometimes in lower case). False if none fits.
 
     Rows with the wrong number of fields don't qualify: once a field is
@@ -180,7 +184,7 @@ def _duplicate(row: Row, earlier: list[Row], rng: random.Random) -> bool:
     candidates = [
         r
         for r in earlier
-        if r.shape == "normal" and re.fullmatch(r"\s*STU\d{5}\s*", r.values["student_id"], re.I)
+        if r.shape == "normal" and re.fullmatch(rf"\s*{re.escape(id_prefix)}\d{{5}}\s*", r.values["student_id"], re.I)
     ]
     if not candidates:
         return False
@@ -192,7 +196,9 @@ def _duplicate(row: Row, earlier: list[Row], rng: random.Random) -> bool:
 # --- assembling the file --------------------------------------------------------
 
 
-def generate(rows: int, error_rate: float, seed: int, today: date) -> Generated:
+def generate(
+    rows: int, error_rate: float, seed: int, today: date, id_prefix: str = DEFAULT_ID_PREFIX
+) -> Generated:
     rng = random.Random(seed)
     fake = Faker("en_IN")
     fake.seed_instance(seed)
@@ -200,11 +206,11 @@ def generate(rows: int, error_rate: float, seed: int, today: date) -> Generated:
     students: list[Row] = []
     mutations: dict[str, int] = {}
     for i in range(1, rows + 1):
-        row = clean_student(i, fake, rng, today)
+        row = clean_student(i, fake, rng, today, id_prefix)
         if rng.random() < 0.15:
             rng.choice(HARMLESS)(row, rng)
         if rng.random() < error_rate:
-            if rng.random() < 0.12 and _duplicate(row, students, rng):
+            if rng.random() < 0.12 and _duplicate(row, students, rng, id_prefix):
                 row.rejected_by = "duplicate id"
             else:
                 row.rejected_by = rng.choice(list(BREAKING))
@@ -269,11 +275,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--today", type=date.fromisoformat, default=date.today(), help="date ages are based on")
     parser.add_argument("--out", type=Path, default=Path("students_generated.csv"), help="where to write the CSV")
     parser.add_argument("--upload", metavar="URL", help="also import it, e.g. http://localhost:8080")
+    parser.add_argument(
+        "--id-prefix",
+        default=DEFAULT_ID_PREFIX,
+        help=f"student IDs are this plus a 5-digit number (default {DEFAULT_ID_PREFIX})",
+    )
     args = parser.parse_args(argv)
     if args.rows < 1 or not 0 <= args.error_rate <= 1:
         parser.error("--rows must be at least 1 and --error-rate between 0 and 1")
+    if not re.fullmatch(r"[A-Za-z0-9-]{1,15}", args.id_prefix):
+        parser.error("--id-prefix must be 1 to 15 letters, digits or hyphens")
 
-    result = generate(args.rows, args.error_rate, args.seed, args.today)
+    result = generate(args.rows, args.error_rate, args.seed, args.today, args.id_prefix)
     content = result.text.encode("utf-8")
     args.out.write_bytes(content)
     print(f"Wrote {args.out} ({len(content) / 1024:.0f} KB)")

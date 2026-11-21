@@ -38,6 +38,10 @@ class ProblemOut(BaseModel):
     raw_value: str | None
 
 
+class ImportLimits(BaseModel):
+    max_upload_mb: int
+
+
 class ImportResult(BaseModel):
     summary: ImportSummary
     problems: Page[ProblemOut]  # first page; more via /api/imports/{id}/problems

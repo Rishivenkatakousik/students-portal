@@ -310,7 +310,7 @@ def test_mark_invalid(raw, code):
 def test_messages_are_readable_and_include_the_value():
     with pytest.raises(FieldError) as excinfo:
         validate_mark("105")
-    assert excinfo.value.message == "105 is outside the allowed range 0 to 100"
+    assert excinfo.value.message == '"105" is outside the allowed range 0 to 100'
 
     with pytest.raises(FieldError) as excinfo:
         validate_email("sana@example")

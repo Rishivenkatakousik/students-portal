@@ -76,7 +76,7 @@ def test_report_lists_every_problem_in_line_order(client):
         "4",
         "STU00003",
         "date_of_birth",
-        "1970-01-01 makes the student 56 years old; students must be 5 to 25",
+        '"1970-01-01" makes the student 56 years old; students must be 5 to 25',
         "OUT_OF_RANGE",
         "1970-01-01",
     ]
@@ -92,7 +92,8 @@ def test_report_neutralises_formulas_from_the_uploaded_file(client):
 
     values = {r[2]: r for r in rows[1:]}
     assert values["full_name"][5] == "'=HYPERLINK(1)"
-    assert values["maths"][3] == "'-5 is outside the allowed range 0 to 100"
+    # Messages quote the value, so they never start like a formula and need no apostrophe.
+    assert values["maths"][3] == '"-5" is outside the allowed range 0 to 100'
     assert values["maths"][5] == "-5"
 
 

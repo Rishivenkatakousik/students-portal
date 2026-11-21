@@ -3,6 +3,7 @@
 import { cleanParams, http } from './client'
 import type {
   GradingScheme,
+  ImportLimits,
   ImportResult,
   ImportSummary,
   Page,
@@ -26,6 +27,11 @@ export const api = {
         if (onProgress && event.total) onProgress(Math.round((event.loaded / event.total) * 100))
       },
     })
+    return data
+  },
+
+  async importLimits(): Promise<ImportLimits> {
+    const { data } = await http.get<ImportLimits>('/imports/limits')
     return data
   },
 

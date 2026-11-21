@@ -10,6 +10,7 @@ export const queryKeys = {
   student: (studentId: string) => ['student', studentId] as const,
   gradingScheme: ['grading-scheme'] as const,
   imports: ['imports'] as const,
+  importLimits: ['import-limits'] as const,
   importProblems: (importId: number, page: number) => ['import-problems', importId, page] as const,
 }
 
@@ -31,6 +32,11 @@ export function useGradingScheme() {
 
 export function useImports() {
   return useQuery({ queryKey: queryKeys.imports, queryFn: () => api.imports(1, 10) })
+}
+
+/** The server's upload limit (MAX_UPLOAD_MB), so the browser can check it first. */
+export function useImportLimits() {
+  return useQuery({ queryKey: queryKeys.importLimits, queryFn: api.importLimits, staleTime: Infinity })
 }
 
 export function useImportProblems(

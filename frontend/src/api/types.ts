@@ -34,6 +34,10 @@ export type Problem = {
   raw_value: string | null
 }
 
+export type ImportLimits = {
+  max_upload_mb: number
+}
+
 export type ImportResult = {
   summary: ImportSummary
   problems: Page<Problem>

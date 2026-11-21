@@ -6,7 +6,7 @@ explained in plain language, and any student can be found and their report
 opened.
 
 - **Import** – upload a CSV, see rows read / imported / rejected and a table of
-  row problems ("Maths: 105 is outside the allowed range 0 to 100"); download
+  row problems (Maths: `"105" is outside the allowed range 0 to 100`); download
   them as a CSV error report; see recent imports.
 - **Students** – search by name or ID, filter by class and section, sort by
   column, page through thousands of students.
@@ -51,7 +51,9 @@ Match.
 ```
 
 Options: `--rows`, `--error-rate` (share of rows broken, default 0.07),
-`--seed` (same seed, same file), `--out`, `--today`. See `--help`.
+`--seed` (same seed, same file), `--out`, `--today`, `--id-prefix`. See `--help`.
+Generated IDs are `GEN00001`, `GEN00002`, … so seeding never overwrites students
+imported from real files.
 
 ## Run the tests
 
@@ -61,7 +63,7 @@ One command (starts Postgres if needed, uses a separate `results_test` database)
 docker compose run --rm app pytest
 ```
 
-310 tests: every column rule and trap, file-level problems (encodings, quotes,
+315 tests: every column rule and trap, file-level problems (encodings, quotes,
 headers, line endings, NUL bytes, non-CSV files), the exact counts for both sample files, the import API
 against Postgres (re-uploads, rollback on failure, concurrent uploads), the
 students and report API, grading boundaries, and a round trip where the seed
@@ -120,6 +122,7 @@ shape: `{"error": {"code": "...", "message": "..."}}`.
 |---|---|---|
 | `POST` | `/api/imports` | Upload a CSV (multipart field `file`); returns the summary and the first 50 problems |
 | `GET` | `/api/imports?page=&page_size=` | Past imports, newest first (failed ones included) |
+| `GET` | `/api/imports/limits` | Upload limit (`max_upload_mb`), so the browser can check a file first |
 | `GET` | `/api/imports/{id}` | Summary of one import |
 | `GET` | `/api/imports/{id}/problems?page=&page_size=` | Row problems, ordered by line |
 | `GET` | `/api/imports/{id}/problems.csv` | Error report download (opens in Excel; formula-safe) |

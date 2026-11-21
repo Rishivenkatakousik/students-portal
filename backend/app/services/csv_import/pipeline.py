@@ -52,7 +52,7 @@ def process(parsed: ParsedFile, today: date) -> PipelineResult:
         raw_id = record.fields[id_index].strip() if id_index < len(record.fields) else ""
 
         if record.error:
-            problems = [_whole_row(record.line, raw_id, ErrorCode.INVALID_FORMAT, record.error.capitalize())]
+            problems = [_whole_row(record.line, raw_id, ErrorCode.INVALID_FORMAT, record.error)]
         elif len(record.fields) != parsed.header_width:
             problems = [
                 _whole_row(
