@@ -131,9 +131,10 @@ backend/
   app/
     main.py       create_app(): error handlers, routers, the built frontend
     frontend.py   serves the built React app (SPA fallback)
+    init_db.py    creates the tables on start-up (python -m app.init_db)
     core/         config, database session, JSON errors, the student column list
     api/          HTTP only: deps.py and routes/ (imports, students, grading, health)
-    models/       SQLAlchemy tables; init_db.py creates them (python -m app.init_db)
+    models/       SQLAlchemy tables
     schemas/      Pydantic response shapes
     repositories/ all SQL (search, sort, bulk upsert); never commits
     services/     business rules: grading.py (total, percentage, grade, pass/fail),
@@ -145,11 +146,11 @@ backend/
 frontend/
   src/api/        typed API client (axios) and response types
   src/hooks/      React Query hooks and cache keys, URL list state, debounce
-  src/components/ shared pieces (Layout, Pagination, ErrorAlert); imports/ and students/
+  src/components/ shared pieces (Layout, PageHeader, EmptyState, ErrorAlert, Pagination),
+                  imports/ and students/ for each screen, ui/ the shadcn/ui components
   src/pages/      ImportPage, StudentsPage, StudentReportPage, NotFoundPage
+  src/lib/        cn() class-name helper used by the shadcn/ui components
   src/utils/      formatters; src/constants/ the CSV column labels
-  src/styles/     Tailwind theme (index.css) and shared class lists (ui.ts)
+  src/styles/     theme colours, dark and print (index.css); table helpers (ui.ts)
 Dockerfile, docker-compose.yml
-PLAN.md           build plan and trap catalogue
-docs/assignment-rules.md   the column and file rules from the sample pack
 ```

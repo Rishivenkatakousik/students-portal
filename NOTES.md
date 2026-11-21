@@ -4,7 +4,7 @@
 
 - **FastAPI (Python 3.13) with the standard `csv` module.** The import rules are the core of the task, and the standard library gets the hard parts right: strict dates, CSV quoting, exact decimals. Not pandas: it pads short rows with NaN (hiding wrong field counts), renumbers lines around blanks, and converts `"09"` or `""` before they can be reported.
 - **PostgreSQL, SQLAlchemy 2.** Tables are created from the models on start-up (`python -m app.init_db`, a no-op once they exist); no migration tool, since the schema is fixed. `INSERT … ON CONFLICT` turns re-uploads into an upsert that reports new / updated / unchanged. CHECK constraints back up the validation; trigram indexes make search fast.
-- **React, TypeScript, Vite, TanStack Query, Tailwind, axios.** FastAPI serves the built app: one container, one origin, no CORS.
+- **React, TypeScript, Vite, TanStack Query, Tailwind with shadcn/ui, axios.** shadcn/ui components are copied into the repo (`src/components/ui`), so they are our code to read and change; one dark theme, switched to light for printing. FastAPI serves the built app: one container, one origin, no CORS.
 
 ## Decisions on the rules
 
@@ -29,7 +29,7 @@ Percentage = total / 500, one decimal place. The grade uses the shown value, so 
 
 ## How I know the import works
 
-Exact counts for both sample files, plus every small-file problem by line and code. The 348 problems in 315 rows match the brief's sketch ("first 50 of 348"). There's a test for every trap in PLAN.md, and deliberately breaking rules confirmed the tests catch it. A seed generator that knows which rows it broke matches the importer line by line across many seeds. The screens were checked in a headless browser (empty, error, phone, print); those scripts aren't committed.
+Exact counts for both sample files, plus every small-file problem by line and code. The 348 problems in 315 rows match the brief's sketch ("first 50 of 348"). There's a test for every data trap found in the sample files, and deliberately breaking rules confirmed the tests catch it. A seed generator that knows which rows it broke matches the importer line by line across many seeds. The screens were checked by hand in Chrome (upload, bad file, empty and not-found states, server down, phone width); those checks aren't scripted.
 
 ## Missing, and next
 

@@ -1,4 +1,4 @@
-"""Column validator tests: one case per trap in PLAN.md's trap catalogue."""
+"""Column validator tests: one case per data trap found in the sample files."""
 
 from datetime import date
 from decimal import Decimal

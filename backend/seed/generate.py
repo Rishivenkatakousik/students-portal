@@ -11,7 +11,7 @@ with what it actually reported). Two kinds of mess are added:
   letter case, DD/MM dates, "09", quoted commas, Unicode names, a byte order
   mark, Windows line endings, shuffled and extra columns, blank lines;
 - breaking mess it must reject, one problem per broken row, drawn from the
-  trap catalogue in PLAN.md.
+  data traps found in the sample files.
 
 Same --seed, same file.
 """
