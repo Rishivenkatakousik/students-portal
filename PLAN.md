@@ -273,7 +273,7 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 - Commit: `feat(api): students list, report and grading`
 
 ### Step 7 — Frontend setup
-1. `npm create vite@latest frontend -- --template react-ts`; add `react-router-dom`, `@tanstack/react-query`.
+1. `npm create vite@latest frontend -- --template react-ts` (React 19, Vite 8, TypeScript 7, oxlint); add `react-router` (v8 — `react-router-dom` is merged into it) and `@tanstack/react-query`. Turn on `"strict": true` (the template leaves it off).
 2. Vite dev proxy `/api` → `http://localhost:8080`.
 3. `src/api.ts`: typed fetch helpers + `ApiError` class (reads `{"error": {code, message}}`).
 4. Layout: header "Results Portal" with Import / Students nav (active state); routes `/` → redirect `/students`, `/import`, `/students`, `/students/:id`, `*` → NotFound.
