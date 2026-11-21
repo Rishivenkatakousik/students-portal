@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { api, ApiError, type ImportResult, type Problem } from '../api'
 import { Pagination } from '../components/Pagination'
 import { FIELD_LABELS, formatBytes, formatNumber, REQUIRED_COLUMNS } from '../format'
+import { alertError, alertSuccess, btnPrimary, btnSecondary, btnSecondarySmall, spinner, stackedTable, tableWrap } from '../ui'
 
 // Mirrors MAX_UPLOAD_MB on the backend, so an oversized file is refused
 // before it is uploaded. The server still enforces its own limit.
@@ -13,7 +14,8 @@ const PROBLEMS_PAGE_SIZE = 50
 export function ImportPage() {
   const [file, setFile] = useState<File | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
-  const upload = useMutation({ mutationFn: api.uploadImport })
+  const [progress, setProgress] = useState(0)
+  const upload = useMutation({ mutationFn: (chosen: File) => api.uploadImport(chosen, setProgress) })
 
   function choose(chosen: File | undefined) {
     if (!chosen) return
@@ -27,21 +29,24 @@ export function ImportPage() {
   }
 
   function start() {
-    if (file && !localError) upload.mutate(file)
+    if (file && !localError) {
+      setProgress(0)
+      upload.mutate(file)
+    }
   }
 
   return (
     <>
       <h1>Import student results</h1>
-      <p className="lead">
+      <p className="mb-6 text-muted">
         Upload a CSV exported from your spreadsheet. Valid rows are imported; rows with problems are listed below so you
         can fix them.
       </p>
 
-      <div className="import-grid">
+      <div className="mb-4 grid items-center gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <FileDrop file={file} disabled={upload.isPending} onChoose={choose} />
-        <div className="import-side">
-          <p className="muted small">
+        <div className="flex flex-col items-start gap-3">
+          <p className="text-sm text-muted">
             <strong>Required columns</strong> (any order, extra columns are ignored):{' '}
             {REQUIRED_COLUMNS.map((c, i) => (
               <span key={c}>
@@ -52,11 +57,11 @@ export function ImportPage() {
           </p>
           <button
             type="button"
-            className="button"
+            className={btnPrimary}
             onClick={start}
             disabled={!file || Boolean(localError) || upload.isPending}
           >
-            {upload.isPending && <span className="spinner" aria-hidden="true" />}
+            {upload.isPending && <span className={spinner} aria-hidden="true" />}
             {upload.isPending ? 'Importing…' : 'Upload and import'}
           </button>
         </div>
@@ -64,15 +69,34 @@ export function ImportPage() {
 
       <div aria-live="polite">
         {localError && <ErrorBox title="This file is too large" message={localError} />}
-        {upload.isPending && file && (
-          <p className="muted">
-            Checking {formatBytes(file.size)} of student data. This usually takes a few seconds…
-          </p>
-        )}
+        {upload.isPending && file && <UploadProgress file={file} percent={progress} />}
         {upload.isError && <UploadError error={upload.error} onRetry={start} />}
         {upload.isSuccess && <ImportOutcome result={upload.data} />}
       </div>
     </>
+  )
+}
+
+function UploadProgress({ file, percent }: { file: File; percent: number }) {
+  const uploading = percent < 100
+  return (
+    <div className="my-4 max-w-md">
+      <p className="mb-1.5 text-sm text-muted">
+        {uploading
+          ? `Uploading ${formatBytes(file.size)}… ${percent}%`
+          : 'Uploaded. Checking every row; this usually takes a few seconds…'}
+      </p>
+      <div
+        className="h-2 overflow-hidden rounded-full bg-subtle"
+        role="progressbar"
+        aria-label="Upload progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+      >
+        <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${percent}%` }} />
+      </div>
+    </div>
   )
 }
 
@@ -97,7 +121,9 @@ function FileDrop({
 
   return (
     <div
-      className={`dropzone ${dragging ? 'dropzone--active' : ''}`}
+      className={`rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors ${
+        dragging ? 'border-accent bg-accent-soft' : 'border-line bg-white'
+      }`}
       onDragOver={(e) => {
         e.preventDefault()
         if (!disabled) setDragging(true)
@@ -105,13 +131,13 @@ function FileDrop({
       onDragLeave={() => setDragging(false)}
       onDrop={onDrop}
     >
-      <p className="dropzone__title">Drag and drop a CSV file here</p>
-      <p className="muted small" id={hintId}>
+      <p className="font-semibold">Drag and drop a CSV file here</p>
+      <p className="mt-1 mb-2 text-sm text-muted" id={hintId}>
         or
       </p>
       <button
         type="button"
-        className="button button--secondary"
+        className={btnSecondary}
         onClick={() => input.current?.click()}
         disabled={disabled}
         aria-describedby={hintId}
@@ -122,7 +148,7 @@ function FileDrop({
         ref={input}
         type="file"
         accept=".csv,text/csv"
-        className="visually-hidden"
+        className="sr-only"
         tabIndex={-1}
         onChange={(e) => {
           onChoose(e.target.files?.[0])
@@ -130,7 +156,7 @@ function FileDrop({
         }}
       />
       {file && (
-        <p className="dropzone__file">
+        <p className="mt-4 wrap-anywhere">
           Selected: <strong>{file.name}</strong> ({formatBytes(file.size)})
         </p>
       )}
@@ -140,11 +166,11 @@ function FileDrop({
 
 function ErrorBox({ title, message, onRetry }: { title: string; message: string; onRetry?: () => void }) {
   return (
-    <div className="alert alert--error" role="alert">
+    <div className={alertError} role="alert">
       <strong>{title}</strong>
-      <p>{message}</p>
+      <p className="mt-1">{message}</p>
       {onRetry && (
-        <button type="button" className="button button--secondary button--small" onClick={onRetry}>
+        <button type="button" className={`${btnSecondarySmall} mt-3`} onClick={onRetry}>
           Try again
         </button>
       )}
@@ -164,41 +190,46 @@ function UploadError({ error, onRetry }: { error: Error; onRetry: () => void }) 
   return <ErrorBox title={title} message={error.message} onRetry={onRetry} />
 }
 
+function Stat({ value, label, tone }: { value: number; label: string; tone?: 'success' | 'danger' }) {
+  const tones = {
+    success: 'border-success-line bg-success-soft [&>span:first-child]:text-success',
+    danger: 'border-danger-line bg-danger-soft [&>span:first-child]:text-danger',
+  }
+  return (
+    <div className={`flex flex-col gap-0.5 rounded-xl border p-4 ${tone ? tones[tone] : 'border-line bg-white'}`}>
+      <span className="text-[1.75rem] leading-tight font-bold">{formatNumber(value)}</span>
+      <span className="text-sm text-muted">{label}</span>
+    </div>
+  )
+}
+
 function ImportOutcome({ result }: { result: ImportResult }) {
   const { summary } = result
   return (
-    <section className="outcome" aria-label="Import result">
-      <div className="stat-grid">
-        <div className="stat">
-          <span className="stat__value">{formatNumber(summary.rows_read)}</span>
-          <span className="stat__label">rows read</span>
-        </div>
-        <div className="stat stat--success">
-          <span className="stat__value">{formatNumber(summary.imported)}</span>
-          <span className="stat__label">
-            imported ({formatNumber(summary.new)} new, {formatNumber(summary.updated)} updated,{' '}
-            {formatNumber(summary.unchanged)} unchanged)
-          </span>
-        </div>
-        <div className={`stat ${summary.rejected > 0 ? 'stat--danger' : ''}`}>
-          <span className="stat__value">{formatNumber(summary.rejected)}</span>
-          <span className="stat__label">rows rejected</span>
-        </div>
+    <section className="mt-2" aria-label="Import result">
+      <div className="my-4 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
+        <Stat value={summary.rows_read} label="rows read" />
+        <Stat
+          value={summary.imported}
+          tone="success"
+          label={`imported (${formatNumber(summary.new)} new, ${formatNumber(summary.updated)} updated, ${formatNumber(summary.unchanged)} unchanged)`}
+        />
+        <Stat value={summary.rejected} label="rows rejected" tone={summary.rejected > 0 ? 'danger' : undefined} />
       </div>
 
       {summary.extra_columns.length > 0 && (
-        <p className="muted small">
+        <p className="text-sm text-muted">
           Ignored extra columns: {summary.extra_columns.map((c) => `"${c}"`).join(', ')}.
         </p>
       )}
 
       {summary.rejected === 0 ? (
-        <div className="alert alert--success">
+        <div className={alertSuccess}>
           Every row was imported. <Link to="/students">View students</Link>
         </div>
       ) : (
         <>
-          <p className="muted">
+          <p className="my-4 text-muted">
             Rejected rows were not imported. Fix them in your spreadsheet and upload the file again: students already
             imported are updated, never duplicated. <Link to="/students">View imported students</Link>
           </p>
@@ -223,10 +254,14 @@ function ProblemsTable({ importId, firstPage }: { importId: number; firstPage: I
     <section aria-labelledby="problems-heading">
       <h2 id="problems-heading">Row problems</h2>
       {problems.isError && (
-        <ErrorBox title="Couldn't load this page of problems" message={problems.error.message} onRetry={() => problems.refetch()} />
+        <ErrorBox
+          title="Couldn't load this page of problems"
+          message={problems.error.message}
+          onRetry={() => problems.refetch()}
+        />
       )}
-      <div className={`table-wrap ${problems.isFetching ? 'is-loading' : ''}`}>
-        <table className="table--stack">
+      <div className={`${tableWrap} ${problems.isFetching ? 'opacity-60' : ''} transition-opacity`}>
+        <table className={stackedTable}>
           <thead>
             <tr>
               <th scope="col">Row</th>
@@ -257,13 +292,16 @@ function ProblemRow({ problem }: { problem: Problem }) {
   return (
     <tr>
       <td data-label="Row">{problem.line}</td>
-      <td data-label="Student ID">{problem.student_id || <span className="muted">(blank)</span>}</td>
+      <td data-label="Student ID">{problem.student_id || <span className="text-muted">(blank)</span>}</td>
       <td data-label="Field">
-        {problem.field ? (FIELD_LABELS[problem.field] ?? problem.field) : <span className="muted">(whole row)</span>}
+        {problem.field ? (FIELD_LABELS[problem.field] ?? problem.field) : <span className="text-muted">(whole row)</span>}
       </td>
-      <td data-label="Problem" className="wrap">
+      <td data-label="Problem" className="whitespace-normal!">
         <span>
-          {problem.message} <span className="code-chip">{problem.code}</span>
+          {problem.message}{' '}
+          <span className="ml-1.5 inline-block rounded bg-subtle px-1.5 py-px font-mono text-xs text-muted">
+            {problem.code}
+          </span>
         </span>
       </td>
     </tr>

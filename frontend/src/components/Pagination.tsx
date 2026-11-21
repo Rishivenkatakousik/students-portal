@@ -1,4 +1,5 @@
 import { formatNumber } from '../format'
+import { btnPrimarySmall, btnSecondarySmall } from '../ui'
 
 type Props = {
   page: number
@@ -26,15 +27,15 @@ export function Pagination({ page, pageSize, total, onPageChange, noun }: Props)
   const end = Math.min(page * pageSize, total)
 
   return (
-    <nav className="pagination" aria-label={`${noun} pages`}>
-      <p className="pagination__summary">
+    <nav className="mt-3 flex flex-1 flex-wrap items-center justify-between gap-3" aria-label={`${noun} pages`}>
+      <p className="text-sm text-muted">
         Showing {formatNumber(first)}–{formatNumber(end)} of {formatNumber(total)} {noun}
       </p>
       {last > 1 && (
-        <div className="pagination__controls">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            className="button button--secondary button--small"
+            className={btnSecondarySmall}
             onClick={() => onPageChange(page - 1)}
             disabled={page <= 1}
           >
@@ -42,14 +43,14 @@ export function Pagination({ page, pageSize, total, onPageChange, noun }: Props)
           </button>
           {pageNumbers(page, last).map((p, i) =>
             p === 'gap' ? (
-              <span key={`gap-${i}`} className="pagination__gap" aria-hidden="true">
+              <span key={`gap-${i}`} className="px-1 text-muted" aria-hidden="true">
                 …
               </span>
             ) : (
               <button
                 key={p}
                 type="button"
-                className={`button button--small ${p === page ? '' : 'button--secondary'}`}
+                className={p === page ? btnPrimarySmall : btnSecondarySmall}
                 onClick={() => onPageChange(p)}
                 aria-current={p === page ? 'page' : undefined}
                 aria-label={`Page ${p}`}
@@ -60,7 +61,7 @@ export function Pagination({ page, pageSize, total, onPageChange, noun }: Props)
           )}
           <button
             type="button"
-            className="button button--secondary button--small"
+            className={btnSecondarySmall}
             onClick={() => onPageChange(page + 1)}
             disabled={page >= last}
           >

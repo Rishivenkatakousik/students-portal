@@ -1,5 +1,7 @@
 // Typed client for the backend API. Types mirror backend/app/schemas.py.
 
+import axios from 'axios'
+
 export type Page<T> = {
   items: T[]
   total: number
@@ -107,64 +109,81 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  let response: Response
-  try {
-    response = await fetch(path, init)
-  } catch {
-    throw new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server. Check your connection and try again.')
+const http = axios.create({ baseURL: '/api', timeout: 30_000 })
+
+// Turn every failure into an ApiError the pages can show as-is.
+http.interceptors.response.use(undefined, (error: unknown) => Promise.reject(toApiError(error)))
+
+function toApiError(error: unknown): ApiError {
+  if (!axios.isAxiosError(error)) {
+    return new ApiError(0, 'UNKNOWN_ERROR', 'Something went wrong. Please try again.')
   }
-  const body: unknown = await response.json().catch(() => null)
-  if (!response.ok) {
-    // Backend errors look like {"error": {"code", "message"}}; anything else
-    // (e.g. a proxy's HTML error page) gets a generic message.
-    const error = (body as { error?: { code?: string; message?: string } } | null)?.error
-    if (!error && [502, 503, 504].includes(response.status)) {
-      // A proxy answered because the backend is down or restarting.
-      throw new ApiError(
-        response.status,
-        'SERVER_UNAVAILABLE',
-        'The server is not responding right now. Please try again in a moment.',
-      )
+  const response = error.response
+  if (!response) {
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      return new ApiError(0, 'TIMEOUT', 'The server took too long to answer. Please try again.')
     }
-    throw new ApiError(
+    return new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server. Check your connection and try again.')
+  }
+  // Backend errors look like {"error": {"code", "message"}}; anything else
+  // (e.g. a proxy's HTML error page) gets a generic message.
+  const body = response.data as { error?: { code?: string; message?: string } } | string | null
+  const apiError = typeof body === 'object' && body !== null ? body.error : undefined
+  if (!apiError && [502, 503, 504].includes(response.status)) {
+    // A proxy answered because the backend is down or restarting.
+    return new ApiError(
       response.status,
-      error?.code ?? `HTTP_${response.status}`,
-      error?.message ?? `The server returned an unexpected error (${response.status}). Please try again.`,
+      'SERVER_UNAVAILABLE',
+      'The server is not responding right now. Please try again in a moment.',
     )
   }
-  return body as T
+  return new ApiError(
+    response.status,
+    apiError?.code ?? `HTTP_${response.status}`,
+    apiError?.message ?? `The server returned an unexpected error (${response.status}). Please try again.`,
+  )
 }
 
-function query(params: Record<string, string | number | undefined>): string {
-  const search = new URLSearchParams()
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== '') search.set(key, String(value))
-  }
-  const text = search.toString()
-  return text ? `?${text}` : ''
+/** Drop empty filters so the URL only carries what is set. */
+function cleanParams(params: Record<string, string | number | undefined>) {
+  return Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''))
 }
+
+/** Upload progress, 0-100. Reaches 100 before the server has finished checking rows. */
+export type ProgressHandler = (percent: number) => void
 
 export const api = {
-  uploadImport(file: File): Promise<ImportResult> {
+  async uploadImport(file: File, onProgress?: ProgressHandler): Promise<ImportResult> {
     const form = new FormData()
     form.append('file', file)
-    return request('/api/imports', { method: 'POST', body: form })
+    const { data } = await http.post<ImportResult>('/imports', form, {
+      timeout: 5 * 60_000, // large files on slow connections
+      onUploadProgress: (event) => {
+        if (onProgress && event.total) onProgress(Math.round((event.loaded / event.total) * 100))
+      },
+    })
+    return data
   },
 
-  importProblems(importId: number, page: number, pageSize: number): Promise<Page<Problem>> {
-    return request(`/api/imports/${importId}/problems${query({ page, page_size: pageSize })}`)
+  async importProblems(importId: number, page: number, pageSize: number): Promise<Page<Problem>> {
+    const { data } = await http.get<Page<Problem>>(`/imports/${importId}/problems`, {
+      params: { page, page_size: pageSize },
+    })
+    return data
   },
 
-  students(params: StudentQuery): Promise<Page<StudentListItem>> {
-    return request(`/api/students${query(params)}`)
+  async students(params: StudentQuery): Promise<Page<StudentListItem>> {
+    const { data } = await http.get<Page<StudentListItem>>('/students', { params: cleanParams(params) })
+    return data
   },
 
-  student(studentId: string): Promise<StudentReport> {
-    return request(`/api/students/${encodeURIComponent(studentId)}`)
+  async student(studentId: string): Promise<StudentReport> {
+    const { data } = await http.get<StudentReport>(`/students/${encodeURIComponent(studentId)}`)
+    return data
   },
 
-  gradingScheme(): Promise<GradingScheme> {
-    return request('/api/grading-scheme')
+  async gradingScheme(): Promise<GradingScheme> {
+    const { data } = await http.get<GradingScheme>('/grading-scheme')
+    return data
   },
 }

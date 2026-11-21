@@ -5,6 +5,7 @@ import { api, type StudentListItem } from '../api'
 import { Pagination } from '../components/Pagination'
 import { formatNumber, formatPercentage } from '../format'
 import { useDebouncedValue } from '../hooks'
+import { alertError, badgeFail, badgePass, btnPrimary, btnSecondary, btnSecondarySmall, control, skeleton, stackedTable, stateCard, stateText, table, tableWrap } from '../ui'
 
 const PAGE_SIZES = [10, 25, 50, 100]
 const DEFAULT_PAGE_SIZE = 25
@@ -68,14 +69,11 @@ export function StudentsPage() {
   return (
     <>
       <h1>Students</h1>
-      <div className="toolbar">
+      <div className="my-4 flex flex-wrap items-center gap-3">
         <SearchBox value={params.q} onSearch={(q) => update({ q }, { replace: true })} />
-        <label className="field">
-          <span className="visually-hidden">Class</span>
-          <select
-            value={params.grade_level ?? ''}
-            onChange={(e) => update({ class: e.target.value })}
-          >
+        <label>
+          <span className="sr-only">Class</span>
+          <select className={control} value={params.grade_level ?? ''} onChange={(e) => update({ class: e.target.value })}>
             <option value="">All classes</option>
             {CLASSES.map((c) => (
               <option key={c} value={c}>
@@ -84,9 +82,9 @@ export function StudentsPage() {
             ))}
           </select>
         </label>
-        <label className="field">
-          <span className="visually-hidden">Section</span>
-          <select value={params.section ?? ''} onChange={(e) => update({ section: e.target.value })}>
+        <label>
+          <span className="sr-only">Section</span>
+          <select className={control} value={params.section ?? ''} onChange={(e) => update({ section: e.target.value })}>
             <option value="">All sections</option>
             {SECTIONS.map((s) => (
               <option key={s} value={s}>
@@ -96,7 +94,7 @@ export function StudentsPage() {
           </select>
         </label>
         {filtered && (
-          <button type="button" className="button button--secondary" onClick={() => setSearch(new URLSearchParams())}>
+          <button type="button" className={btnSecondary} onClick={() => setSearch(new URLSearchParams())}>
             Clear filters
           </button>
         )}
@@ -105,49 +103,52 @@ export function StudentsPage() {
       {students.isPending ? (
         <SkeletonTable rows={8} />
       ) : students.isError ? (
-        <div className="alert alert--error" role="alert">
+        <div className={alertError} role="alert">
           <strong>Couldn't load students</strong>
-          <p>{students.error.message}</p>
-          <button type="button" className="button button--secondary button--small" onClick={() => students.refetch()}>
+          <p className="mt-1">{students.error.message}</p>
+          <button type="button" className={`${btnSecondarySmall} mt-3`} onClick={() => students.refetch()}>
             Retry
           </button>
         </div>
       ) : students.data.total === 0 && !filtered ? (
-        <div className="state card">
+        <div className={stateCard}>
           <h2>No students yet</h2>
-          <p>Import a CSV of student results to see them here.</p>
-          <Link to="/import" className="button">
+          <p className={stateText}>Import a CSV of student results to see them here.</p>
+          <Link to="/import" className={btnPrimary}>
             Import a file
           </Link>
         </div>
       ) : students.data.total === 0 ? (
-        <div className="state card">
-          <h2>No students match{params.q ? ` "${params.q}"` : ''}{filterDescription(params)}</h2>
-          <p>
+        <div className={stateCard}>
+          <h2>
+            No students match{params.q ? ` "${params.q}"` : ''}
+            {filterDescription(params)}
+          </h2>
+          <p className={stateText}>
             {params.q
               ? 'Check the spelling, or search by part of a name or student ID.'
               : 'No students are in this class and section.'}
           </p>
-          <button type="button" className="button button--secondary" onClick={() => setSearch(new URLSearchParams())}>
+          <button type="button" className={btnSecondary} onClick={() => setSearch(new URLSearchParams())}>
             Clear search and filters
           </button>
         </div>
       ) : students.data.items.length === 0 ? (
-        <div className="state card">
+        <div className={stateCard}>
           <h2>Page {params.page} is empty</h2>
-          <p>There are only {formatNumber(students.data.total)} matching students.</p>
-          <button type="button" className="button button--secondary" onClick={() => update({ page: undefined })}>
+          <p className={stateText}>There are only {formatNumber(students.data.total)} matching students.</p>
+          <button type="button" className={btnSecondary} onClick={() => update({ page: undefined })}>
             Go to the first page
           </button>
         </div>
       ) : (
         <>
-          <p className="muted small" aria-live="polite">
+          <p className="mb-2 text-sm text-muted" aria-live="polite">
             {formatNumber(students.data.total)} {students.data.total === 1 ? 'student' : 'students'}
             {filtered ? ' match' : ''}
           </p>
           <StudentsTable students={students.data.items} loading={students.isFetching} listSearch={search.toString()} />
-          <div className="list-footer">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <Pagination
               page={params.page}
               pageSize={params.page_size}
@@ -158,11 +159,14 @@ export function StudentsPage() {
               }}
               noun="students"
             />
-            <label className="field field--inline">
+            <label className="inline-flex items-center gap-2 text-sm text-muted">
               <span>Rows per page</span>
               <select
+                className={control}
                 value={params.page_size}
-                onChange={(e) => update({ size: Number(e.target.value) === DEFAULT_PAGE_SIZE ? undefined : e.target.value })}
+                onChange={(e) =>
+                  update({ size: Number(e.target.value) === DEFAULT_PAGE_SIZE ? undefined : e.target.value })
+                }
               >
                 {PAGE_SIZES.map((s) => (
                   <option key={s} value={s}>
@@ -201,13 +205,14 @@ function SearchBox({ value, onSearch }: { value: string; onSearch: (q: string) =
   }, [value])
 
   return (
-    <div className="field field--grow">
-      <label htmlFor={id} className="visually-hidden">
+    <div className="flex-[1_1_260px]">
+      <label htmlFor={id} className="sr-only">
         Search by name or student ID
       </label>
       <input
         id={id}
         type="search"
+        className={`${control} w-full`}
         placeholder="Search by name or student ID"
         value={text}
         maxLength={100}
@@ -228,8 +233,8 @@ function StudentsTable({
   listSearch: string
 }) {
   return (
-    <div className={`table-wrap ${loading ? 'is-loading' : ''}`} aria-busy={loading}>
-      <table className="table--stack">
+    <div className={`${tableWrap} ${loading ? 'opacity-60' : ''} transition-opacity`} aria-busy={loading}>
+      <table className={stackedTable}>
         <thead>
           <tr>
             <th scope="col">Student ID</th>
@@ -249,7 +254,7 @@ function StudentsTable({
                 <Link
                   to={`/students/${encodeURIComponent(s.student_id)}`}
                   state={{ listSearch }}
-                  className="name-link"
+                  className="font-semibold no-underline hover:underline"
                 >
                   {s.full_name}
                 </Link>
@@ -259,7 +264,7 @@ function StudentsTable({
               <td data-label="Percentage">{formatPercentage(s.percentage)}</td>
               <td data-label="Grade">{s.grade}</td>
               <td data-label="Result">
-                <span className={`badge ${s.passed ? 'badge--pass' : 'badge--fail'}`}>{s.passed ? 'Pass' : 'Fail'}</span>
+                <span className={s.passed ? badgePass : badgeFail}>{s.passed ? 'Pass' : 'Fail'}</span>
               </td>
             </tr>
           ))}
@@ -271,14 +276,14 @@ function StudentsTable({
 
 function SkeletonTable({ rows }: { rows: number }) {
   return (
-    <div className="table-wrap" aria-busy="true" aria-label="Loading students">
-      <table>
+    <div className={tableWrap} aria-busy="true" aria-label="Loading students">
+      <table className={table}>
         <tbody>
           {Array.from({ length: rows }, (_, i) => (
             <tr key={i}>
               {[70, 160, 30, 30, 50, 30, 50].map((width, j) => (
                 <td key={j}>
-                  <span className="skeleton" style={{ width }} />
+                  <span className={skeleton} style={{ width }} />
                 </td>
               ))}
             </tr>

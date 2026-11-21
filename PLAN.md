@@ -9,7 +9,7 @@ Deliverables: frontend + backend + seed script, Dockerfile (+ compose), one-comm
 - **Backend:** FastAPI (Python 3.13), Pydantic v2
 - **DB:** PostgreSQL 16 via **SQLAlchemy 2.0** (typed ORM models; Core `postgresql.insert().on_conflict_do_update()` for bulk upsert) + **Alembic**
 - **CSV:** stdlib `csv` (`encoding="utf-8-sig"`, `newline=""`, `reader.line_num`) + hand-written validators — no pandas (it pads short rows with NaN, drops blank lines from numbering, coerces "09"/"" → loses raw values)
-- **Frontend:** React + Vite + TypeScript, React Router, TanStack Query
+- **Frontend:** React + Vite + TypeScript, React Router, TanStack Query, **Tailwind CSS 4** (styling) and **axios** (HTTP, gives upload progress). Both pinned to exact, established versions: `tailwindcss`/`@tailwindcss/vite` 4.3.3, `axios` 1.20.0 — axios had a compromised npm release in March 2026 (1.14.1), so its dependency tree was checked before adopting it
 - **Tests:** pytest; **Seed:** Faker (`en_IN`)
 - **Run:** multi-stage Dockerfile (Node builds `frontend/dist` → Python image serves API + static) + `docker-compose.yml` (app + postgres). App on **http://localhost:8080**.
 
@@ -275,9 +275,9 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 ### Step 7 — Frontend setup
 1. `npm create vite@latest frontend -- --template react-ts` (React 19, Vite 8, TypeScript 7, oxlint); add `react-router` (v8 — `react-router-dom` is merged into it) and `@tanstack/react-query`. Turn on `"strict": true` (the template leaves it off).
 2. Vite dev proxy `/api` → `http://localhost:8080`.
-3. `src/api.ts`: typed fetch helpers + `ApiError` class (reads `{"error": {code, message}}`).
+3. `src/api.ts`: axios instance (`baseURL: /api`) whose response interceptor turns every failure into an `ApiError` (reads `{"error": {code, message}}`; network/timeout/proxy 502–504 get plain messages); upload reports progress.
 4. Layout: header "Results Portal" with Import / Students nav (active state); routes `/` → redirect `/students`, `/import`, `/students`, `/students/:id`, `*` → NotFound.
-5. Plain CSS with variables (no UI library — keeps the bundle and the explanation small); responsive to phone width.
+5. Tailwind CSS: theme tokens (colours, fonts, shimmer) in `src/index.css` `@theme`; repeated building blocks as class strings in `src/ui.ts`. **Rule learned:** never stack two utilities for the same property to override (e.g. `bg-white` + `bg-danger-soft`, `min-h-10` + `min-h-8`) — Tailwind resolves them by stylesheet order, not markup order; choose complete variants instead (`btnSecondarySmall`). Responsive to phone width (`max-sm:` tables become labelled cards).
 - **Done when:** `npm run dev` shows the layout and nav between empty pages.
 - Commit: `feat(frontend): app shell and routing`
 

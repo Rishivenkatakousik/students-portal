@@ -3,8 +3,10 @@ import { useEffect } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
 import { api, ApiError, type GradingScheme, type StudentReport } from '../api'
 import { formatDate, formatPercentage } from '../format'
+import { alertError, btnPrimary, btnSecondary, btnSecondarySmall, card, stateCard, stateText, table, tableWrap } from '../ui'
 
 const APP_TITLE = 'Results Portal'
+const reportGrid = 'mb-7 grid gap-4 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]'
 
 /** 58 -> "58", 51.7 -> "51.7", 285.125 -> "285.125" (no float noise). */
 function formatMark(value: number): string {
@@ -39,7 +41,7 @@ export function StudentReportPage() {
   }, [report.data])
 
   const back = (
-    <Link to={backTo} className="back-link no-print">
+    <Link to={backTo} className="mb-4 inline-block font-semibold no-underline hover:underline print:hidden">
       ‹ Back to students
     </Link>
   )
@@ -48,10 +50,10 @@ export function StudentReportPage() {
     return (
       <>
         {back}
-        <h1 className="visually-hidden">Student report</h1>
-        <div className="report-grid" aria-busy="true" aria-label="Loading report">
-          <div className="card report-skeleton" />
-          <div className="card report-skeleton" />
+        <h1 className="sr-only">Student report</h1>
+        <div className={reportGrid} aria-busy="true" aria-label="Loading report">
+          <div className="min-h-[150px] rounded-xl border border-line bg-subtle" />
+          <div className="min-h-[150px] rounded-xl border border-line bg-subtle" />
         </div>
       </>
     )
@@ -62,20 +64,23 @@ export function StudentReportPage() {
     return (
       <>
         {back}
-        {!notFound && <h1 className="visually-hidden">Student report</h1>}
+        {!notFound && <h1 className="sr-only">Student report</h1>}
         {notFound ? (
-          <div className="state card">
+          <div className={stateCard}>
             <h1>Student not found</h1>
-            <p>There is no student with ID "{studentId}". It may have been mistyped, or the student hasn't been imported yet.</p>
-            <Link to={backTo} className="button">
+            <p className={stateText}>
+              There is no student with ID "{studentId}". It may have been mistyped, or the student hasn't been imported
+              yet.
+            </p>
+            <Link to={backTo} className={btnPrimary}>
               Back to students
             </Link>
           </div>
         ) : (
-          <div className="alert alert--error" role="alert">
+          <div className={alertError} role="alert">
             <strong>Couldn't load this report</strong>
-            <p>{report.error.message}</p>
-            <button type="button" className="button button--secondary button--small" onClick={() => report.refetch()}>
+            <p className="mt-1">{report.error.message}</p>
+            <button type="button" className={`${btnSecondarySmall} mt-3`} onClick={() => report.refetch()}>
               Retry
             </button>
           </div>
@@ -88,18 +93,23 @@ export function StudentReportPage() {
   return (
     <>
       {back}
-      <div className="report-grid">
-        <section className="card report-details" aria-labelledby="student-name">
-          <span className="avatar" aria-hidden="true">
+      <div className={reportGrid}>
+        <section className={`${card} flex items-start gap-4 print:break-inside-avoid`} aria-labelledby="student-name">
+          <span
+            className="inline-flex size-14 flex-none items-center justify-center rounded-full bg-subtle text-lg font-bold text-muted"
+            aria-hidden="true"
+          >
             {initials(student.full_name)}
           </span>
-          <div>
-            <h1 id="student-name">{student.full_name}</h1>
-            <p className="muted">
+          <div className="min-w-0 text-muted [&>p]:wrap-anywhere">
+            <h1 id="student-name" className="mb-1 text-ink wrap-anywhere">
+              {student.full_name}
+            </h1>
+            <p>
               {student.student_id} · Class {student.grade_level}, Section {student.section}
             </p>
-            <p className="muted">{student.email}</p>
-            <p className="muted">
+            <p>{student.email}</p>
+            <p>
               Date of birth: {formatDate(student.date_of_birth)} (age {student.age})
             </p>
           </div>
@@ -112,9 +122,9 @@ export function StudentReportPage() {
         <MarksTable student={student} passMark={scheme.data?.subject_pass_mark} />
       </section>
 
-      <div className="report-footer">
+      <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         {scheme.data && <SchemeNote scheme={scheme.data} />}
-        <button type="button" className="button button--secondary no-print" onClick={() => window.print()}>
+        <button type="button" className={`${btnSecondary} print:hidden`} onClick={() => window.print()}>
           Print report
         </button>
       </div>
@@ -137,26 +147,40 @@ function failReasons(student: StudentReport, scheme: GradingScheme | undefined):
 
 function OverallCard({ student, scheme }: { student: StudentReport; scheme: GradingScheme | undefined }) {
   const reasons = failReasons(student, scheme)
+  const tone = student.passed ? 'border-accent-line bg-accent-soft' : 'border-danger-line bg-danger-soft'
+  const big = 'text-4xl leading-tight font-extrabold'
   return (
-    <section className={`card overall ${student.passed ? 'overall--pass' : 'overall--fail'}`} aria-label="Overall result">
-      <div className="overall__numbers">
-        <div>
-          <span className="overall__label">Overall</span>
-          <span className="overall__percentage">{formatPercentage(student.percentage)}</span>
+    // Not `card`: its bg-white/border-line would compete with the tint, and
+    // Tailwind resolves two conflicting utilities by stylesheet order, not markup order.
+    <section
+      className={`flex flex-col gap-2 rounded-xl border p-5 shadow-sm print:break-inside-avoid print:shadow-none ${tone}`}
+      aria-label="Overall result"
+    >
+      <div className="flex flex-wrap items-end gap-5">
+        <div className="flex flex-col">
+          <span className="text-xs text-muted">Overall</span>
+          <span className={`${big} ${student.passed ? 'text-accent' : 'text-danger'}`}>
+            {formatPercentage(student.percentage)}
+          </span>
         </div>
-        <div>
-          <span className="overall__label">Grade</span>
-          <span className="overall__grade">{student.grade}</span>
+        <div className="flex flex-col">
+          <span className="text-xs text-muted">Grade</span>
+          <span className={big}>{student.grade}</span>
         </div>
-        <span className={`badge badge--large ${student.passed ? 'badge--pass' : 'badge--fail'}`}>
+        {/* Solid colours: the result must stand out on its tinted card and on paper. */}
+        <span
+          className={`ml-auto rounded-full px-4 py-1.5 text-sm font-semibold tracking-wider text-white ${
+            student.passed ? 'bg-success' : 'bg-danger'
+          }`}
+        >
           {student.passed ? 'PASS' : 'FAIL'}
         </span>
       </div>
-      <p className="overall__total">
+      <p>
         Total: <strong>{formatMark(student.total)}</strong> / {student.max_total}
       </p>
       {reasons.length > 0 && (
-        <ul className="overall__reasons">
+        <ul className="list-disc pl-5 text-sm text-danger">
           {reasons.map((r) => (
             <li key={r}>{r}</li>
           ))}
@@ -167,41 +191,49 @@ function OverallCard({ student, scheme }: { student: StudentReport; scheme: Grad
 }
 
 function MarksTable({ student, passMark }: { student: StudentReport; passMark: number | undefined }) {
+  // Fixed columns on phones so the bars keep their share instead of shrinking to dots.
+  const narrow = 'max-sm:table-fixed max-sm:[&_td]:px-2.5 max-sm:[&_td]:whitespace-normal max-sm:[&_th]:px-2.5 max-sm:[&_th]:whitespace-normal'
+  const rowHeader = '[&_tbody_th]:text-[0.95rem] [&_tbody_th]:font-medium [&_tfoot_th]:font-bold'
   return (
-    <div className="table-wrap">
-      <table className="marks-table">
+    <div className={tableWrap}>
+      <table className={`${table} ${narrow} ${rowHeader}`}>
         <thead>
           <tr>
-            <th scope="col">Subject</th>
+            <th scope="col" className="max-sm:w-[38%]">
+              Subject
+            </th>
             <th scope="col">Marks (out of 100)</th>
-            <th scope="col" className="marks-table__bar-col">
-              <span className="visually-hidden">Bar chart</span>
+            <th scope="col" className="w-[45%] max-sm:w-[30%]">
+              <span className="sr-only">Bar chart</span>
             </th>
           </tr>
         </thead>
         <tbody>
           {student.marks.map((m) => (
-            <tr key={m.subject} className={m.passed ? '' : 'marks-table__row--fail'}>
+            <tr key={m.subject}>
               <th scope="row">{m.label}</th>
               <td>
                 <strong>{formatMark(m.mark)}</strong>
                 {!m.passed && passMark !== undefined && (
-                  <span className="fail-note"> below pass mark ({formatMark(passMark)})</span>
+                  <span className="text-sm text-danger max-sm:block"> below pass mark ({formatMark(passMark)})</span>
                 )}
               </td>
-              <td className="marks-table__bar-col" aria-hidden="true">
-                <span className="bar">
-                  <span className="bar__fill" style={{ width: `${Math.min(100, Math.max(0, m.mark))}%` }} />
+              <td aria-hidden="true">
+                <span className="block h-2.5 overflow-hidden rounded-full bg-subtle">
+                  <span
+                    className={`block h-full rounded-full ${m.passed ? 'bg-accent' : 'bg-danger'}`}
+                    style={{ width: `${Math.min(100, Math.max(0, m.mark))}%` }}
+                  />
                 </span>
               </td>
             </tr>
           ))}
         </tbody>
-        <tfoot>
+        <tfoot className="border-t-2 border-line font-bold">
           <tr>
             <th scope="row">Total</th>
             <td colSpan={2}>
-              <strong>{formatMark(student.total)}</strong> / {student.max_total}
+              {formatMark(student.total)} / {student.max_total}
             </td>
           </tr>
         </tfoot>
@@ -212,10 +244,14 @@ function MarksTable({ student, passMark }: { student: StudentReport; passMark: n
 
 function SchemeNote({ scheme }: { scheme: GradingScheme }) {
   const bands = scheme.bands
-    .map((b, i) => (i === scheme.bands.length - 1 ? `${b.grade} below ${scheme.bands[i - 1].min_percentage}%` : `${b.grade} ${b.min_percentage}%+`))
+    .map((b, i) =>
+      i === scheme.bands.length - 1
+        ? `${b.grade} below ${scheme.bands[i - 1].min_percentage}%`
+        : `${b.grade} ${b.min_percentage}%+`,
+    )
     .join(' · ')
   return (
-    <p className="muted small scheme-note">
+    <p className="flex-[1_1_320px] text-sm text-muted">
       <strong>How this is graded:</strong> {bands}. Pass needs {scheme.pass_percentage}% overall and at least{' '}
       {formatMark(scheme.subject_pass_mark)} in every subject. Percentages are rounded to one decimal place.
     </p>
