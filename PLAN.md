@@ -57,7 +57,7 @@ Dockerfile, docker-compose.yml, .dockerignore, .gitignore, README.md, NOTES.md
 | Field | Check | Codes |
 |---|---|---|
 | student_id | `^[A-Za-z0-9-]{3,20}$` → upper | MISSING_REQUIRED, INVALID_FORMAT |
-| full_name | collapse whitespace; 2–100 chars; Unicode letters, spaces, `'` `,` `.` `-` | MISSING_REQUIRED, INVALID_FORMAT, OUT_OF_RANGE (length) |
+| full_name | NFC-normalise, collapse whitespace; 2–100 chars; Unicode letters (+ combining marks), spaces, `'` `’` `,` `.` `-`; at least one letter | MISSING_REQUIRED, INVALID_FORMAT (incl. length) |
 | email | one `@`, non-empty local, dotted domain with TLD, no spaces → lower | MISSING_REQUIRED, INVALID_FORMAT |
 | date_of_birth | `\d{4}-\d{2}-\d{2}` or `\d{2}/\d{2}/\d{4}` → `strptime` → age 5–25 inclusive vs `today` | MISSING_REQUIRED, INVALID_FORMAT, OUT_OF_RANGE |
 | grade_level | `^-?\d+$` → 1–12 (`09` ok, `-2` OUT_OF_RANGE, `IX`/`9th` INVALID_FORMAT) | as above |
@@ -151,7 +151,8 @@ Each line = one parametrized test case (`tests/test_validators.py`, `tests/test_
 - `"  Siddharth   Bose "` → `Siddharth Bose`; tabs / non-breaking space (` `) collapsed ⚙
 - `Bjørn`, `Anaïs`, `Zoë D'Souza`, `Kaur, Reyansh`, `O’Brien` (curly apostrophe) → valid ⚙
 - `Mary-Jane`, `A. Kumar` → valid (Decision: allow `-` and `.`)
-- 1 char, 101 chars → OUT_OF_RANGE; exactly 2 and 100 → valid
+- 1 char, 101 chars → INVALID_FORMAT (Decision: length limits on text are a format rule; OUT_OF_RANGE is kept for numbers and ages); exactly 2 and 100 → valid
+- `प्रिया शर्मा` (Devanagari vowel signs are combining marks, not letters) and decomposed `Zoë` → valid (Decision: allow combining marks, NFC-normalise)
 - `R2D2`, emoji, `''`, `,,` (no letters) → INVALID_FORMAT
 
 **email**
