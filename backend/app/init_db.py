@@ -1,10 +1,5 @@
-"""Create the database schema from the models: ``python -m app.init_db``.
-
-Safe to run on every start: existing tables are left alone (nothing is ever
-altered or dropped), and everything runs in one transaction, so a failure
-leaves the database as it was. The schema is fixed, so there is no migration
-tool; changing a table later means writing the ALTER TABLE by hand.
-"""
+"""Create missing tables on start-up (``python -m app.init_db``); existing ones are never altered.
+The schema is fixed, so there is no migration tool."""
 
 import logging
 

@@ -1,15 +1,5 @@
-"""Decide, row by row, what gets imported and what gets reported.
-
-Order for each record (blank and all-empty rows were already dropped by the parser):
-
-1. record could not be read            -> INVALID_FORMAT for the whole row
-2. wrong number of fields              -> WRONG_FIELD_COUNT for the whole row
-3. validate every column               -> all problems collected
-4. student ID already seen in the file -> DUPLICATE_ID
-
-"Seen" includes earlier rows that were rejected: the README says the *first*
-row with an ID is the original, whether or not that row was valid.
-"""
+"""Decide per row: unreadable -> INVALID_FORMAT, wrong field count -> WRONG_FIELD_COUNT,
+then every column's checks, then DUPLICATE_ID (the first row with an ID wins, even if invalid)."""
 
 from dataclasses import dataclass, field
 from datetime import date

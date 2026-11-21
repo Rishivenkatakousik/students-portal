@@ -1,5 +1,4 @@
-# Student Results Portal: one image with the API and the built React app.
-#   docker compose up --build    (recommended: also starts Postgres)
+# One image: the API plus the built React app. Run with: docker compose up --build
 
 # --- Stage 1: build the React app ---------------------------------------------
 FROM node:24-alpine AS frontend
@@ -21,12 +20,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN useradd --create-home --uid 1000 app
 WORKDIR /app/backend
 
-# Install the exact versions in requirements.lock, so every build gets the same
-# dependencies. Then install the package itself (no new dependencies) against a
-# placeholder, so this layer is reused until pyproject.toml or the lock changes.
-# The editable install points at /app/backend/app, where the real code is
-# copied next. Dev extras are included so the tests and the seed script can run
-# inside the container.
+# Pinned deps from requirements.lock, then the package itself (dev extras so tests and
+# the seed run in the container). Cached until pyproject.toml or the lock changes.
 COPY backend/pyproject.toml backend/requirements.lock ./
 RUN mkdir app && touch app/__init__.py \
     && pip install -r requirements.lock \
@@ -41,6 +36,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=2)"
 
-# Create any missing tables (a no-op once they exist), then serve. exec makes
-# uvicorn PID 1 so it gets Docker's stop signal and shuts down cleanly.
+# Create missing tables, then serve; exec makes uvicorn PID 1 so it stops cleanly.
 CMD ["sh", "-c", "python -m app.init_db && exec uvicorn app.main:app --host 0.0.0.0 --port 8080"]

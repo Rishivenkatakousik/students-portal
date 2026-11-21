@@ -12,8 +12,7 @@ import './styles/index.css'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Retry once for server or network trouble, never for "not found" or
-      // other 4xx answers: those will not change by asking again.
+      // Retry once on server/network errors, never on 4xx: asking again won't help.
       retry: (failureCount, error) =>
         failureCount < 1 && !(error instanceof ApiError && error.status >= 400 && error.status < 500),
       refetchOnWindowFocus: false,

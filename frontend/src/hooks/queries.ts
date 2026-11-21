@@ -57,8 +57,7 @@ export function useUploadImport(onProgress: ProgressHandler) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (chosen: File) => api.uploadImport(chosen, onProgress),
-    // Cached lists and reports are now out of date; without this, "View
-    // students" right after an import could still show "No students yet".
+    // Lists and reports are now stale (else "View students" could still show none).
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.allStudents }),

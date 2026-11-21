@@ -1,8 +1,4 @@
-"""Run one import end to end: parse, validate, save.
-
-Everything an import writes (summary, students, problems) is committed in one
-transaction, so a failure part-way never leaves half a file in the database.
-"""
+"""Run one import (parse, validate, save) in a single transaction: a failure saves nothing."""
 
 import logging
 from datetime import UTC, date, datetime
@@ -28,11 +24,8 @@ class ImportFailed(Exception):
 
 
 def run_import(session: Session, *, filename: str, data: bytes, today: date, max_bytes: int) -> Import:
-    """Import one uploaded file and return its summary record.
-
-    Raises ``FileError`` if the file as a whole is unusable, and ``ImportFailed``
-    if the database rejects the save. Both are recorded as failed imports.
-    """
+    """Import one file and return its summary record.
+    Raises ``FileError`` (unusable file) or ``ImportFailed`` (save failed); both are recorded."""
     try:
         parsed = parse_csv(data, max_bytes)
     except FileError as error:

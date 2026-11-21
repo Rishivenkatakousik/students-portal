@@ -5,8 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 
-# pool_pre_ping replaces connections the database has dropped (e.g. after a
-# Postgres restart) instead of failing the next request.
+# pool_pre_ping replaces connections Postgres dropped (e.g. after a restart).
 engine = create_engine(settings.database_url, pool_pre_ping=True)
 SessionLocal = sessionmaker(engine, expire_on_commit=False)
 

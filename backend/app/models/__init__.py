@@ -1,12 +1,5 @@
-"""Database tables.
-
-Validation happens in ``app.services.csv_import``; the CHECK constraints here are
-a second line of defence so a bug there can never store, say, a mark of 105.
-Total, percentage and grade are not stored: they are always computed from the
-marks (see ``app.services.grading``), so they can never disagree with them.
-
-Every model is imported here so ``Base.metadata`` (used by ``app.init_db``) sees all tables.
-"""
+"""Database tables. CHECK constraints back up the importer's validation; totals and grades
+are computed from the marks, never stored. Every model is imported so Base sees it."""
 
 from app.models.base import Base
 from app.models.imports import IMPORT_STATUSES, Import, ImportProblem

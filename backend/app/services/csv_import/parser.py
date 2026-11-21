@@ -1,13 +1,5 @@
-"""Turn uploaded bytes into a header map and numbered records.
-
-Problems that make the whole file unusable raise ``FileError`` (nothing gets
-imported). Problems confined to one record are returned as ``Record.error`` so
-the rest of the file still imports.
-
-Line numbers are physical lines in the file, header = line 1, blank lines
-counted. A record whose quoted value spans several lines is reported at the
-line where it starts.
-"""
+"""Turn uploaded bytes into a header map and records numbered by physical line (header = 1).
+Whole-file problems raise ``FileError``; an unreadable row gets ``Record.error`` instead."""
 
 import codecs
 import csv
@@ -50,8 +42,7 @@ class ParsedFile:
     records: list[Record]
 
 
-# csv's default limit is 128 KB per field; uploads are capped well below this
-# anyway, so a larger limit only matters for a pathological single field.
+# Allow fields beyond csv's 128 KB default (uploads are size-capped anyway).
 csv.field_size_limit(16 * 1024 * 1024)
 
 
@@ -67,8 +58,7 @@ def parse_csv(data: bytes, max_bytes: int) -> ParsedFile:
         raise FileError(FileErrorCode.EMPTY_FILE, "The file is empty.")
 
     records = _read_records(text)
-    # An unreadable line has no fields but is not blank: it must stop here, or
-    # a JSON file would be called "empty" and a broken header would be skipped.
+    # Stop at an unreadable line, so a broken header (or JSON) is named, not skipped as blank.
     header_index = next((i for i, r in enumerate(records) if r.error or _has_content(r.fields)), None)
     if header_index is None:
         raise FileError(FileErrorCode.EMPTY_FILE, "The file is empty.")
@@ -117,8 +107,7 @@ def _decode(data: bytes) -> str:
     # UTF-16 without a byte order mark is valid UTF-8 with a NUL after every letter.
     if text.count("\x00") > len(text) // 4:
         raise FileError(FileErrorCode.NOT_UTF8, _UTF16_MESSAGE)
-    # Postgres cannot store NUL, so one stray NUL would fail the whole import.
-    # As U+FFFD it is just a bad character: its cell is rejected like any other.
+    # Postgres can't store NUL; as U+FFFD it just makes its cell invalid.
     return text.replace("\x00", "�")
 
 
@@ -133,16 +122,14 @@ _UNCLOSED_QUOTE = (
 
 
 def _read_records(text: str) -> list[Record]:
-    # Split into physical lines exactly as csv would (\r\n, \n or a lone \r),
-    # keeping the endings so quoted values can still span lines.
+    # Physical lines as csv splits them; endings kept so quoted values can span lines.
     lines = io.StringIO(text, newline="").readlines()
     records: list[Record] = []
     width: int | None = None  # the header's field count, once it has been read
     pos = 0  # lines[pos] is the next line to read; its line number is pos + 1
 
     while pos < len(lines):
-        # strict=True makes a misplaced or unclosed quote an error instead of
-        # silently merging text. The reader is restarted after a bad quote.
+        # strict=True turns a misplaced quote into an error; the reader restarts after one.
         reader = csv.reader(iter(lines[pos:]), strict=True, skipinitialspace=True)
         offset = pos
         while True:
@@ -155,9 +142,7 @@ def _read_records(text: str) -> list[Record]:
             except csv.Error:
                 end = offset + reader.line_num
                 if end > start:
-                    # A quote opened on this line ran on to a later quote (or the end of
-                    # the file), swallowing the lines in between. Reject only this line
-                    # and read the following lines again from scratch.
+                    # The quote swallowed later lines: reject only this line and re-read the rest.
                     records.append(_broken_row(start, lines[start - 1], _UNCLOSED_QUOTE))
                     pos = start
                     break
@@ -167,8 +152,7 @@ def _read_records(text: str) -> list[Record]:
                 continue
             end = offset + reader.line_num
             if end > start and width is not None and len(fields) != width:
-                # Quoted values may span lines, but with the wrong number of fields
-                # this is a stray quote that closed on a later line: same as above.
+                # Spans lines but has the wrong field count: a stray quote, handled as above.
                 records.append(_broken_row(start, lines[start - 1], _UNCLOSED_QUOTE))
                 pos = start
                 break
@@ -180,11 +164,7 @@ def _read_records(text: str) -> list[Record]:
 
 
 def _broken_row(line: int, text: str, message: str) -> Record:
-    """A row whose quotes can't be parsed, with its fields read leniently.
-
-    The lenient fields are only used to show which student the row was for (its
-    ID column usually survives a stray quote elsewhere in the row).
-    """
+    """A row with broken quotes; its fields are read leniently only to recover the student ID."""
     fields = next(csv.reader([text.rstrip("\r\n")], skipinitialspace=True), [])
     return Record(line, fields, error=message)
 

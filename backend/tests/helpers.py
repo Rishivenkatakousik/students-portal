@@ -7,9 +7,7 @@ from app.core.student_fields import REQUIRED_COLUMNS
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
-# Ages are checked against "today", so tests pin it. The sample pack's expected
-# counts (16/9 and 4,685/315) hold for every day from 2025-12-26 to at least
-# 2028-03-01; this date sits inside that window.
+# Ages depend on "today", so tests pin it (the sample counts hold 2025-12-26 to 2028-03-01).
 TODAY = date(2026, 11, 21)
 
 HEADER = ",".join(REQUIRED_COLUMNS)

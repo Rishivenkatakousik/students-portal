@@ -114,8 +114,7 @@ def test_invalid_query_parameters_are_explained(client, params):
 
 
 def test_paging_through_the_sample_by_percentage_is_complete_and_ordered(client):
-    # Real data has many students with the same percentage; every one must
-    # appear exactly once, and SQL's sort must agree with the displayed value.
+    # With many equal percentages, each student must appear exactly once.
     client.post("/api/imports", files={"file": ("s.csv", (FIXTURES / "students_sample.csv").read_bytes())})
     seen, percentages, page = [], [], 1
     while True:

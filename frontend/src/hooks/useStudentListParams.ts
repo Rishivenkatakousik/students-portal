@@ -56,10 +56,7 @@ export function useStudentListParams() {
 
   /** Change URL params; anything other than the page number resets to page 1. */
   function update(changes: Record<string, string | number | undefined>, options?: { replace?: boolean }) {
-    // Build from the address bar, not this render's copy: two quick changes in
-    // a row (class, then section) must not overwrite each other. React
-    // Router's functional update would not help here; it also passes this
-    // render's params rather than queueing like React's setState.
+    // Read the address bar, not this render's copy, so two quick changes don't overwrite each other.
     const next = new URLSearchParams(window.location.search)
     for (const [key, value] of Object.entries(changes)) {
       if (value === undefined || value === '') next.delete(key)

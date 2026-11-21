@@ -1,12 +1,5 @@
-"""Serve the built React app (frontend/dist) from FastAPI.
-
-One process and one origin in production: no CORS, no second server.
-Any non-API path returns index.html so React Router can handle it, which
-makes refreshing or sharing a link like /students/STU00001 work.
-
-The build is looked up on each request, not once at startup, so running
-`npm run build` while the backend is already running just works.
-"""
+"""Serve the built React app from FastAPI (one origin, no CORS).
+Non-API paths get index.html so deep links work; files are looked up per request."""
 
 from pathlib import Path
 
@@ -21,8 +14,7 @@ def mount_frontend(app: FastAPI, dist: Path) -> None:
     root = dist.resolve()
     index = root / "index.html"
 
-    # Vite puts fingerprinted JS/CSS in assets/, so they can be cached forever.
-    # check_dir=False: the folder may only appear after the server starts.
+    # Fingerprinted Vite assets; check_dir=False as the build may appear after start-up.
     app.mount("/assets", StaticFiles(directory=root / "assets", check_dir=False), name="assets")
 
     @app.get("/{path:path}", include_in_schema=False)

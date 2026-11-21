@@ -1,22 +1,9 @@
 """Generate a realistic, deliberately messy student CSV, and optionally load it.
 
-    python -m seed.generate --rows 5000 --out messy.csv
     python -m seed.generate --rows 5000 --upload http://localhost:8080
 
-Student IDs are GEN00001, GEN00002, ... so loading generated data never
-overwrites students imported from real files (--id-prefix changes "GEN").
-
-Every row is built knowing whether the importer should accept it, so the script
-prints the counts the portal ought to report (and, with --upload, compares them
-with what it actually reported). Two kinds of mess are added:
-
-- harmless mess the importer must clean up and accept: padded values, odd
-  letter case, DD/MM dates, "09", quoted commas, Unicode names, a byte order
-  mark, Windows line endings, shuffled and extra columns, blank lines;
-- breaking mess it must reject, one problem per broken row, drawn from the
-  data traps found in the sample files.
-
-Same --seed, same file.
+Each row knows whether it should be accepted, so expected counts are printed (and checked
+against the portal with --upload). IDs are GEN00001..., so real students are never overwritten.
 """
 
 import argparse
@@ -175,12 +162,8 @@ BREAKING: dict[str, Callable[[Row, random.Random, date], None]] = {
 
 
 def _duplicate(row: Row, earlier: list[Row], rng: random.Random, id_prefix: str) -> bool:
-    """Reuse an earlier row's ID (sometimes in lower case). False if none fits.
-
-    Rows with the wrong number of fields don't qualify: once a field is
-    missing, the importer can't know which value is the ID (with shuffled
-    columns the ID may be the very field that was dropped).
-    """
+    """Reuse an earlier row's ID (sometimes lower-cased); False if none fits.
+    Wrong-field-count rows don't qualify: the importer can't tell which value is their ID."""
     candidates = [
         r
         for r in earlier
@@ -227,8 +210,7 @@ def generate(
     line = 1
     rejected_lines: list[int] = []
     for row in students:
-        # Blank and all-comma lines are skipped by the importer but still
-        # count as lines, which the expected line numbers must follow.
+        # Blank lines are skipped by the importer but still count for line numbers.
         while rng.random() < 0.003:
             out.write(rng.choice(["\r\n", "," * (len(columns) - 1) + "\r\n", " \r\n"]))
             line += 1

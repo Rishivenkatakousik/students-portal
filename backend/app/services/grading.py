@@ -1,12 +1,5 @@
-"""Grading scheme: the one place that turns marks into a result.
-
-- Total out of 500 (five subjects, each out of 100).
-- Percentage = total / 5, rounded half-up to one decimal place.
-- Grade from that *displayed* percentage, so a report never shows "80.0%"
-  next to a B: A >= 80, B >= 65, C >= 50, D >= 40, F below 40.
-- Pass = percentage >= 40 AND at least 33 in every subject. A student can
-  have a D overall and still fail because of one subject.
-"""
+"""Grading: total out of 500, percentage to one decimal (half-up), grade from that shown
+percentage (A >= 80, B >= 65, C >= 50, D >= 40, else F); pass = >= 40% and >= 33 in every subject."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass

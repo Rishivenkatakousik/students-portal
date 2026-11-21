@@ -1,16 +1,6 @@
-"""Per-column validation for student CSV rows.
-
-Every validator takes the raw cell text and either returns the cleaned value or
-raises ``FieldError``. The order of checks is always the same:
-
-1. empty after trimming        -> MISSING_REQUIRED
-2. strict pattern check        -> INVALID_FORMAT
-3. convert, then range check   -> OUT_OF_RANGE
-
-Patterns are checked *before* converting because Python's converters are too
-forgiving for this data: ``float("1e3")`` is 1000, ``float("nan")`` is NaN and
-``int("٣")`` is 3. All digit patterns use ``[0-9]`` (ASCII only), never ``\\d``.
-"""
+"""Per-column validators: return the cleaned value or raise ``FieldError``.
+Strict ASCII patterns run before converting, because Python alone would accept
+float("1e3"), float("nan") and int("٣")."""
 
 import re
 import unicodedata
@@ -59,16 +49,14 @@ _INTEGER = re.compile(r"-?[0-9]+")
 _DECIMAL = re.compile(r"-?[0-9]+(?:\.[0-9]+)?")
 _SECTION = re.compile(r"[A-Fa-f]")
 
-# Practical email check: ASCII local part without leading, trailing or doubled
-# dots; a domain of dot-separated labels that ends in a 2+ letter TLD.
+# Practical email check: ASCII, no stray dots, dotted domain ending in a 2+ letter TLD.
 _EMAIL_LOCAL_ATOM = r"[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+"
 _EMAIL_LABEL = r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?"
 _EMAIL = re.compile(
     rf"{_EMAIL_LOCAL_ATOM}(?:\.{_EMAIL_LOCAL_ATOM})*@(?:{_EMAIL_LABEL}\.)+[A-Za-z]{{2,}}"
 )
 
-# Punctuation allowed in names besides letters and spaces. Includes the curly
-# apostrophe that spreadsheets often substitute for a straight one.
+# Name punctuation, including the curly apostrophe spreadsheets often substitute.
 _NAME_PUNCTUATION = frozenset("'’,.-")
 
 
@@ -108,8 +96,7 @@ def validate_full_name(raw: str) -> str:
         category = unicodedata.category(ch)
         if category.startswith("L"):
             has_letter = True
-        # Combining marks (M*) are part of letters in many scripts,
-        # e.g. Devanagari vowel signs in "प्रिया".
+        # Combining marks (M*) belong to letters in many scripts, e.g. Hindi vowel signs.
         elif not (category.startswith("M") or ch == " " or ch in _NAME_PUNCTUATION):
             raise FieldError(
                 ErrorCode.INVALID_FORMAT,
@@ -201,12 +188,7 @@ def validate_mark(raw: str) -> Decimal:
 
 
 def validate_fields(raw: Mapping[str, str], today: date) -> tuple[dict, list[FieldIssue]]:
-    """Validate every required column of one row.
-
-    Returns the cleaned values and *all* problems found, so the administrator
-    can fix a row in one go instead of discovering errors one at a time.
-    ``raw`` must contain every name in ``REQUIRED_COLUMNS``.
-    """
+    """Validate every column of one row; returns the cleaned values and *all* problems found."""
     validators = {
         "student_id": validate_student_id,
         "full_name": validate_full_name,

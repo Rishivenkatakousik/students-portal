@@ -19,8 +19,7 @@ const APP_TITLE = 'Results Portal'
 export function StudentReportPage() {
   const { studentId = '' } = useParams()
   const location = useLocation()
-  // The list passes its query string along, so "Back" returns to the same
-  // search, filters and page. Opened directly, it goes to the full list.
+  // "Back" returns to the list's search, filters and page when we came from it.
   const listSearch = (location.state as { listSearch?: string } | null)?.listSearch
   const backTo = listSearch ? `/students?${listSearch}` : '/students'
 

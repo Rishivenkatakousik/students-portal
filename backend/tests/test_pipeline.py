@@ -145,8 +145,7 @@ def test_unclosed_quote_at_the_end_rejects_only_that_row():
 
 
 def test_unclosed_quote_closed_by_a_later_quote_does_not_swallow_rows():
-    # Line 3's quote would otherwise run on to line 6's quoted name, silently
-    # merging lines 3-6 into one rejected record.
+    # Line 3's quote would otherwise run on to line 6, merging lines 3-6.
     result = run(
         row(),
         row(student_id="STU00002", full_name='"Patel'),
@@ -161,8 +160,7 @@ def test_unclosed_quote_closed_by_a_later_quote_does_not_swallow_rows():
 
 
 def test_unclosed_quote_closing_cleanly_on_a_later_line_does_not_swallow_rows():
-    # The stray quote closes at the end of line 5's email, so csv raises nothing:
-    # the merged record just has the wrong number of fields.
+    # The quote closes cleanly on line 5, so csv raises nothing; only the field count is wrong.
     result = run(
         row(),
         row(student_id="STU00002", full_name='"Patel'),

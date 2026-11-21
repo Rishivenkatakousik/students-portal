@@ -1,9 +1,4 @@
-"""The seed generator and the importer must agree on every row.
-
-The generator knows which rows it broke; the importer decides independently.
-Matching counts *and* the exact set of rejected lines means neither side is
-quietly wrong.
-"""
+"""The seed generator knows which rows it broke; the importer must reject exactly those."""
 
 import pytest
 

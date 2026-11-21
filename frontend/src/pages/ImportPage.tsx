@@ -20,8 +20,7 @@ export function ImportPage() {
   const [localError, setLocalError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
   const upload = useUploadImport(setProgress)
-  // Read from the server, so an oversized file is refused before it is sent.
-  // Until it loads (or if it fails) the server's own check still applies.
+  // From the server; until it loads, only the server's own size check applies.
   const maxUploadMb = useImportLimits().data?.max_upload_mb
 
   function choose(chosen: File | undefined) {

@@ -1,10 +1,5 @@
-"""Database fixtures for API tests.
-
-Tests use their own database (``results_test`` next to the app database) so
-they never touch real data. It is created (with its tables) on first use and
-emptied before each test. Unit tests that don't ask for ``client`` or
-``db_session`` never connect to Postgres.
-"""
+"""API test fixtures: a separate ``results_test`` database, created on first use and
+emptied before each test. Pure unit tests never connect to Postgres."""
 
 import os
 

@@ -20,9 +20,7 @@ SortKey = Literal[
     "student_id", "-student_id", "name", "-name", "class", "-class", "percentage", "-percentage"
 ]  # fmt: skip
 
-# Same rounding as grading.round_percentage (Postgres rounds numeric half away
-# from zero, which equals half-up for non-negative marks). Used only to sort;
-# the numbers shown always come from grading.summarise.
+# Same half-up rounding as grading.round_percentage; used only for sorting.
 _PERCENTAGE_SQL = func.round(
     sum((getattr(Student, m) for m in MARK_FIELDS), start=0) * 100 / grading.MAX_TOTAL, 1
 )
@@ -69,8 +67,7 @@ def search_students(
 
     descending = sort.startswith("-")
     order = [c.desc() if descending else c.asc() for c in _SORT_COLUMNS[sort.lstrip("-")]]
-    # student_id last: a unique tiebreaker keeps pages stable, so no student
-    # shows up on two pages or on none when many share a percentage.
+    # Unique tiebreaker keeps pages stable when many students share a value.
     if sort.lstrip("-") != "student_id":
         order.append(Student.student_id.asc())
 
@@ -82,11 +79,8 @@ def search_students(
 
 
 def upsert_students(session: Session, rows: list[ValidRow], import_id: int) -> tuple[int, int]:
-    """Insert new students, update changed ones, leave identical ones alone.
-
-    Returns (new, updated). Rows are written in student_id order so that two
-    imports running at once lock rows in the same order and cannot deadlock.
-    """
+    """Insert new, update changed, skip identical students; returns (new, updated).
+    Rows go in student_id order so concurrent imports lock in the same order (no deadlock)."""
     new = updated = 0
     ordered = sorted(rows, key=lambda r: r.data["student_id"])
     for batch in batched(ordered, BATCH_SIZE, strict=False):  # last batch may be shorter
@@ -104,8 +98,7 @@ def _upsert_batch(session: Session, values: list[dict]) -> list[bool]:
     stmt = stmt.on_conflict_do_update(
         index_elements=[Student.student_id],
         set_={c: stmt.excluded[c] for c in [*data_columns, "last_import_id"]} | {"updated_at": func.now()},
-        # Only touch rows whose data actually changed; identical rows return
-        # nothing, which is how "unchanged" is counted.
+        # Only changed rows are updated; identical rows return nothing (= "unchanged").
         where=or_(*(getattr(Student, c).is_distinct_from(stmt.excluded[c]) for c in data_columns)),
     )
     # xmax = 0 only for a freshly inserted row version: True = new, False = updated.

@@ -31,8 +31,7 @@ function toApiError(error: unknown): ApiError {
     }
     return new ApiError(0, 'NETWORK_ERROR', 'Could not reach the server. Check your connection and try again.')
   }
-  // Backend errors look like {"error": {"code", "message"}}; anything else
-  // (e.g. a proxy's HTML error page) gets a generic message.
+  // Our errors are {"error": {"code", "message"}}; anything else gets a generic message.
   const body = response.data as { error?: { code?: string; message?: string } } | string | null
   const apiError = typeof body === 'object' && body !== null ? body.error : undefined
   if (!apiError && [502, 503, 504].includes(response.status)) {

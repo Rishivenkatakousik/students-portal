@@ -58,8 +58,7 @@ def test_sample_file_import_and_problem_pages(client):
     assert (summary["rows_read"], summary["imported"], summary["rejected"]) == (5000, 4685, 315)
     assert summary["new"] == 4685
     assert summary["extra_columns"] == ["parent_phone"]
-    # 315 rejected rows carry 348 problems (some rows have several) -- the
-    # same "showing first 50 of 348" the assignment's sketch shows.
+    # 315 rejected rows carry 348 problems, matching the brief's "first 50 of 348".
     assert body["problems"]["total"] == 348
     assert len(body["problems"]["items"]) == 50
 
@@ -232,10 +231,8 @@ def test_database_failure_mid_import_rolls_everything_back(client, db_session, m
 
 
 def test_concurrent_imports_of_overlapping_students_do_not_deadlock(clean_database):
-    # Two files with the same students in opposite order, saved at the same
-    # time. Without sorting rows before the upsert, Postgres reports "deadlock
-    # detected" here; 3,000 rows x 5 rounds is enough for the two saves to
-    # overlap every time (smaller files finish before the other one starts).
+    # Same students in opposite order, saved at once: without sorted upserts Postgres
+    # reports a deadlock (3,000 rows x 5 rounds makes the saves overlap reliably).
     ids = [f"STU{i:05d}" for i in range(3000)]
     files = [
         csv_bytes(*[row(student_id=i, maths="10") for i in ids]),

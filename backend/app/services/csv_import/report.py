@@ -15,13 +15,8 @@ _PLAIN_NUMBER = re.compile(r"[+-]?[0-9]+(\.[0-9]+)?")
 
 
 def spreadsheet_safe(value: str) -> str:
-    """Stop a cell from running as a formula when the report is opened.
-
-    The report repeats values from the uploaded file, so a cell like
-    =HYPERLINK(...) would otherwise run in Excel (CSV injection). Prefixing
-    an apostrophe makes it plain text. Plain numbers such as -5 are left
-    alone: they are harmless and the administrator should see them as-is.
-    """
+    """Prefix an apostrophe so a cell like =HYPERLINK(...) can't run in Excel (CSV injection).
+    Plain numbers such as -5 are left as they are."""
     if value.startswith(_FORMULA_START) and not _PLAIN_NUMBER.fullmatch(value):
         return "'" + value
     return value

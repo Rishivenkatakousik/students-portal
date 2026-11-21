@@ -1,8 +1,4 @@
-"""One JSON error shape for every failure: {"error": {"code": ..., "message": ...}}.
-
-The frontend can show ``message`` for any error without special cases, and an
-unexpected exception never leaks a stack trace or takes the server down.
-"""
+"""One JSON shape for every error, {"error": {"code", "message"}}, and never a stack trace."""
 
 import logging
 

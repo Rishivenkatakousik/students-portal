@@ -1,5 +1,4 @@
-// Tables that turn into labelled cards on narrow screens. Every cell needs a
-// data-label; the header row is hidden visually (but kept for screen readers).
+// Tables that become labelled cards on narrow screens (every cell needs a data-label).
 export const stackedTable = [
   'max-sm:[&_thead]:sr-only',
   'max-sm:[&_tbody_tr]:block max-sm:[&_tbody_tr]:px-4 max-sm:[&_tbody_tr]:py-3',
