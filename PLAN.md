@@ -28,7 +28,7 @@ backend/app/
   main.py            app, routers, global exception handler, serves frontend/dist (SPA fallback)
   config.py          DATABASE_URL, MAX_UPLOAD_MB
   db.py              engine + session dependency
-  models.py          Student, Import, ImportError
+  models.py          Student, Import, ImportProblem
   schemas.py         Pydantic responses
   grading.py         total / percentage / grade / pass (single source of truth)
   importer/parser.py      bytes → header map + (line_no, fields) iterator; FileError
@@ -45,7 +45,7 @@ Dockerfile, docker-compose.yml, .dockerignore, .gitignore, README.md, NOTES.md
 ## Data model
 - **students**: `student_id varchar(20) PK` (upper), `full_name varchar(100)`, `email varchar(254)` (lower), `date_of_birth date`, `grade_level smallint`, `section char(1)`, five marks `numeric` (unconstrained — `numeric(5,2)` would silently round `85.125`), `last_import_id FK`, `created_at`, `updated_at`. Indexes: trigram GIN on `full_name`, btree on `(grade_level, section)`.
 - **imports**: id, filename, size, started_at, finished_at, status (`completed`/`failed`), file_error, rows_read, imported, new, updated, unchanged, rejected, extra_columns.
-- **import_errors**: id, import_id FK, line_no, student_id (raw), field, code, message, raw_value.
+- **import_problems** (model `ImportProblem` — not `ImportError`, which would shadow Python's built-in exception): id, import_id FK (cascade), line, student_id (raw), field, code, message, raw_value.
 - Total/percentage/grade are **computed** (Python in `grading.py`, mirrored SQL expression only for list sorting) — never stored.
 
 ## Import pipeline
@@ -240,10 +240,10 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 - Commit: `feat(import): CSV parser and row pipeline matching expected counts`
 
 ### Step 4 — Database: models + migration
-1. `docker-compose.yml` with just the `db` service for now (postgres:16, port 5432, healthcheck, named volume).
+1. `docker-compose.yml` with just the `db` service for now (postgres:16, host port **5433** bound to 127.0.0.1 — 5432 is often taken by another local Postgres; healthcheck, named volume).
 2. `app/db.py`: engine from `DATABASE_URL`, `SessionLocal`, `get_session` dependency.
-3. `app/models.py`: `Student`, `Import`, `ImportError` per the Data model section (`Mapped[...]` typed columns; marks `Numeric` unconstrained).
-4. `alembic init`, set `target_metadata`, autogenerate the first migration, then hand-add `CREATE EXTENSION IF NOT EXISTS pg_trgm` and the trigram GIN index.
+3. `app/models.py`: `Student`, `Import`, `ImportProblem` per the Data model section (`Mapped[...]` typed columns; marks `Numeric` unconstrained).
+4. `alembic init`, set `target_metadata`, autogenerate the first migration, then hand-add `CREATE EXTENSION IF NOT EXISTS pg_trgm`. Trigram GIN indexes on `full_name` and `student_id`; CHECK constraints (marks 0–100, grade 1–12, section A–F, upper-case ID, import status) as a second line of defence.
 - **Done when:** `docker compose up -d db && alembic upgrade head` creates all tables; `alembic downgrade base` cleanly drops them.
 - Commit: `feat(db): models and initial migration`
 
@@ -252,7 +252,7 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
    - Create the `Import` row; call parser + pipeline.
    - `FileError` → mark import `failed` with `file_error`, return it.
    - Upsert valid rows in batches of 1,000 with `postgresql.insert(Student).on_conflict_do_update(..., where=<any column IS DISTINCT FROM excluded>).returning(literal_column("xmax = 0"))` → count new / updated; unchanged = imported − returned.
-   - Bulk-insert `ImportError` rows; fill summary counts; one transaction; any DB exception → rollback, record failed import in a fresh transaction.
+   - Bulk-insert `ImportProblem` rows; fill summary counts; one transaction; any DB exception → rollback, record failed import in a fresh transaction.
 2. `routers/imports.py`:
    - `POST /api/imports` — read upload with a size guard (stop reading past 10 MB → 413); return summary + first 50 errors; file errors → 400 with `{code, message}` body.
    - `GET /api/imports/{id}`, `GET /api/imports/{id}/errors?page=&page_size=`.

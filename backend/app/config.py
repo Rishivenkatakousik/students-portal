@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    database_url: str = "postgresql+psycopg://results:results@localhost:5432/results"
+    database_url: str = "postgresql+psycopg://results:results@localhost:5433/results"
     max_upload_mb: int = 10
 
 
