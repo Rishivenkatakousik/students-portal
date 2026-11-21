@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { btnPrimary, stateText } from '../ui'
+import { btnPrimary, stateText } from '../styles/ui'
 
 export function NotFoundPage() {
   return (

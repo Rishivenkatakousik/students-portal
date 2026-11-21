@@ -1,3 +1,5 @@
+> Historical build plan: file paths below reflect the original layout. See the README's "Project layout" for the current structure.
+
 # Student Results Portal — Implementation Plan
 
 ## Context

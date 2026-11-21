@@ -6,10 +6,11 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 
-from app.config import settings
-from app.db import SessionLocal
-from app.importer import service
+from app.core.config import settings
+from app.core.database import SessionLocal
 from app.models import Import, Student
+from app.repositories import students as students_repo
+from app.services import imports as import_service
 from tests.helpers import FIXTURES, HEADER, TODAY, row
 
 
@@ -173,8 +174,8 @@ def test_unknown_import_is_404(client):
 
 
 def test_database_failure_mid_import_rolls_everything_back(client, db_session, monkeypatch):
-    monkeypatch.setattr(service, "BATCH_SIZE", 2)
-    real_upsert = service._upsert_batch
+    monkeypatch.setattr(students_repo, "BATCH_SIZE", 2)
+    real_upsert = students_repo._upsert_batch
     calls = []
 
     def fail_on_second_batch(session, values):
@@ -183,7 +184,7 @@ def test_database_failure_mid_import_rolls_everything_back(client, db_session, m
             raise OperationalError("UPSERT", {}, Exception("connection lost"))
         return real_upsert(session, values)
 
-    monkeypatch.setattr(service, "_upsert_batch", fail_on_second_batch)
+    monkeypatch.setattr(students_repo, "_upsert_batch", fail_on_second_batch)
 
     response = upload(client, csv_bytes(*[row(student_id=f"STU{i:05d}") for i in range(5)]))
 
@@ -212,7 +213,7 @@ def test_concurrent_imports_of_overlapping_students_do_not_deadlock(clean_databa
         try:
             with SessionLocal() as session:
                 barrier.wait()
-                service.run_import(session, filename="x.csv", data=content, today=TODAY, max_bytes=10 << 20)
+                import_service.run_import(session, filename="x.csv", data=content, today=TODAY, max_bytes=10 << 20)
         except Exception as error:  # noqa: BLE001 -- collected and asserted below
             errors.append(error)
 

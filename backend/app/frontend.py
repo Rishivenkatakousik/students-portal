@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.errors import AppError
+from app.core.errors import AppError
 
 
 def mount_frontend(app: FastAPI, dist: Path) -> None:

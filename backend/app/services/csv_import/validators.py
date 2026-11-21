@@ -20,6 +20,8 @@ from datetime import date
 from decimal import Decimal
 from enum import StrEnum
 
+from app.core.student_fields import MARK_FIELDS
+
 
 class ErrorCode(StrEnum):
     MISSING_REQUIRED = "MISSING_REQUIRED"
@@ -45,18 +47,6 @@ class FieldIssue:
     message: str
     raw_value: str
 
-
-MARK_FIELDS = ("maths", "science", "english", "social_studies", "second_language")
-
-REQUIRED_COLUMNS = (
-    "student_id",
-    "full_name",
-    "email",
-    "date_of_birth",
-    "grade_level",
-    "section",
-    *MARK_FIELDS,
-)
 
 MIN_AGE, MAX_AGE = 5, 25
 MIN_GRADE, MAX_GRADE = 1, 12

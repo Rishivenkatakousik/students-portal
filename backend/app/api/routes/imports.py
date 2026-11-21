@@ -1,17 +1,18 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Response, UploadFile
-from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.config import settings
-from app.deps import SessionDep, TodayDep
-from app.errors import AppError
-from app.importer.parser import FileError, FileErrorCode
-from app.importer.report import problems_csv, report_filename
-from app.importer.service import ImportFailed, run_import
-from app.models import Import, ImportProblem
-from app.schemas import ImportResult, ImportSummary, Page, ProblemOut
+from app.api.deps import SessionDep, TodayDep
+from app.core.config import settings
+from app.core.errors import AppError
+from app.models import Import
+from app.repositories import imports as imports_repo
+from app.schemas.common import Page
+from app.schemas.imports import ImportResult, ImportSummary, ProblemOut
+from app.services.csv_import.parser import FileError, FileErrorCode
+from app.services.csv_import.report import problems_csv, report_filename
+from app.services.imports import ImportFailed, run_import
 
 router = APIRouter(prefix="/api/imports", tags=["imports"])
 
@@ -43,10 +44,7 @@ def list_imports(
     page_size: Annotated[int, Query(ge=1, le=50)] = 10,
 ) -> Page[ImportSummary]:
     """Past imports, newest first (failed ones included, with their reason)."""
-    total = session.scalar(select(func.count()).select_from(Import)) or 0
-    records = session.scalars(
-        select(Import).order_by(Import.id.desc()).offset((page - 1) * page_size).limit(page_size)
-    )
+    records, total = imports_repo.list_imports(session, page=page, page_size=page_size)
     return Page(
         items=[ImportSummary.model_validate(r) for r in records], total=total, page=page, page_size=page_size
     )
@@ -56,11 +54,7 @@ def list_imports(
 def download_problems(import_id: int, session: SessionDep) -> Response:
     """Every problem of one import as a CSV the administrator can open in Excel."""
     record = _get_or_404(session, import_id)
-    problems = session.scalars(
-        select(ImportProblem)
-        .where(ImportProblem.import_id == import_id)
-        .order_by(ImportProblem.line, ImportProblem.id)
-    )
+    problems = imports_repo.all_problems(session, import_id)
     return Response(
         content=problems_csv(problems),
         media_type="text/csv; charset=utf-8",
@@ -85,22 +79,14 @@ def list_problems(
 
 
 def _get_or_404(session: Session, import_id: int) -> Import:
-    record = session.get(Import, import_id)
+    record = imports_repo.get_import(session, import_id)
     if record is None:
         raise AppError(404, "IMPORT_NOT_FOUND", f"There is no import with ID {import_id}.")
     return record
 
 
 def _problem_page(session: Session, import_id: int, *, page: int, page_size: int) -> Page[ProblemOut]:
-    where = ImportProblem.import_id == import_id
-    total = session.scalar(select(func.count()).select_from(ImportProblem).where(where)) or 0
-    rows = session.scalars(
-        select(ImportProblem)
-        .where(where)
-        .order_by(ImportProblem.line, ImportProblem.id)
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    )
+    rows, total = imports_repo.problem_page(session, import_id, page=page, page_size=page_size)
     return Page(
         items=[ProblemOut.model_validate(r) for r in rows],
         total=total,

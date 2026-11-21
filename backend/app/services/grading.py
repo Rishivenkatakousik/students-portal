@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 
-from app.importer.validators import MARK_FIELDS
+from app.core.student_fields import MARK_FIELDS
 
 SUBJECT_LABELS = {
     "maths": "Maths",

@@ -14,8 +14,8 @@ row with an ID is the original, whether or not that row was valid.
 from dataclasses import dataclass, field
 from datetime import date
 
-from app.importer.parser import ParsedFile
-from app.importer.validators import ErrorCode, validate_fields
+from app.services.csv_import.parser import ParsedFile
+from app.services.csv_import.validators import ErrorCode, validate_fields
 
 
 @dataclass(frozen=True)

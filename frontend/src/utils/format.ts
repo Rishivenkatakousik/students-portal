@@ -32,19 +32,15 @@ export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-/** Readable names for CSV columns, as an administrator would say them. */
-export const FIELD_LABELS: Record<string, string> = {
-  student_id: 'Student ID',
-  full_name: 'Name',
-  email: 'Email',
-  date_of_birth: 'Date of birth',
-  grade_level: 'Class',
-  section: 'Section',
-  maths: 'Maths',
-  science: 'Science',
-  english: 'English',
-  social_studies: 'Social studies',
-  second_language: 'Second language',
+/** 58 -> "58", 51.7 -> "51.7", 285.125 -> "285.125" (no float noise). */
+export function formatMark(value: number): string {
+  return String(Number(value.toFixed(3)))
 }
 
-export const REQUIRED_COLUMNS = Object.keys(FIELD_LABELS)
+export function initials(name: string): string {
+  const words = name.replace(/[,.]/g, ' ').split(/\s+/).filter(Boolean)
+  const letters = [words[0], words.length > 1 ? words[words.length - 1] : undefined]
+    .filter((w): w is string => Boolean(w))
+    .map((w) => Array.from(w)[0].toUpperCase())
+  return letters.join('')
+}

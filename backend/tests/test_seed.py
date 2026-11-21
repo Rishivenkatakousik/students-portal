@@ -7,8 +7,8 @@ quietly wrong.
 
 import pytest
 
-from app.importer.parser import parse_csv
-from app.importer.pipeline import process
+from app.services.csv_import.parser import parse_csv
+from app.services.csv_import.pipeline import process
 from seed.generate import BREAKING, generate, main
 from tests.helpers import TODAY
 

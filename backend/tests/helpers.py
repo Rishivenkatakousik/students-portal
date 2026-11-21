@@ -3,7 +3,7 @@
 from datetime import date
 from pathlib import Path
 
-from app.importer.validators import REQUIRED_COLUMNS
+from app.core.student_fields import REQUIRED_COLUMNS
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

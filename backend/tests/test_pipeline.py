@@ -1,8 +1,8 @@
 """Row-level behaviour: skipping, field counts, line numbers, duplicates."""
 
-from app.importer.parser import parse_csv
-from app.importer.pipeline import PipelineResult, process
-from app.importer.validators import ErrorCode
+from app.services.csv_import.parser import parse_csv
+from app.services.csv_import.pipeline import PipelineResult, process
+from app.services.csv_import.validators import ErrorCode
 from tests.helpers import HEADER, TODAY, row
 
 

@@ -1,5 +1,5 @@
-import { formatNumber } from '../format'
-import { btnPrimarySmall, btnSecondarySmall } from '../ui'
+import { formatNumber } from '../utils/format'
+import { btnPrimarySmall, btnSecondarySmall } from '../styles/ui'
 
 type Props = {
   page: number

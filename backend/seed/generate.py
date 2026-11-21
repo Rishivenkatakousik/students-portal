@@ -30,7 +30,7 @@ from pathlib import Path
 
 from faker import Faker
 
-from app.importer.validators import MARK_FIELDS, REQUIRED_COLUMNS
+from app.core.student_fields import MARK_FIELDS, REQUIRED_COLUMNS
 
 SECTIONS = "ABCDEF"
 EXTRA_COLUMN = "parent_phone"

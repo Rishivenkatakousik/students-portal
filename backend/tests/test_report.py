@@ -5,7 +5,7 @@ import io
 
 import pytest
 
-from app.importer.report import report_filename, spreadsheet_safe
+from app.services.csv_import.report import report_filename, spreadsheet_safe
 from tests.helpers import FIXTURES, HEADER, row
 
 

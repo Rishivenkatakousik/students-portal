@@ -2,8 +2,8 @@ from decimal import Decimal
 
 import pytest
 
-from app.grading import grade_for, summarise
-from app.importer.validators import MARK_FIELDS
+from app.core.student_fields import MARK_FIELDS
+from app.services.grading import grade_for, summarise
 
 
 def marks(*values) -> dict[str, Decimal]:

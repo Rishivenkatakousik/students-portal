@@ -9,7 +9,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine, pool
 
-from app.config import settings
+from app.core.config import settings
 from app.models import Base
 
 # Log "Running upgrade ..." lines (useful when a container fails to start).

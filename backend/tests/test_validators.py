@@ -5,8 +5,8 @@ from decimal import Decimal
 
 import pytest
 
-from app.importer.validators import (
-    REQUIRED_COLUMNS,
+from app.core.student_fields import REQUIRED_COLUMNS
+from app.services.csv_import.validators import (
     ErrorCode,
     FieldError,
     validate_date_of_birth,

@@ -2,9 +2,9 @@
 
 from collections import Counter
 
-from app.importer.parser import parse_csv
-from app.importer.pipeline import process
-from app.importer.validators import ErrorCode
+from app.services.csv_import.parser import parse_csv
+from app.services.csv_import.pipeline import process
+from app.services.csv_import.validators import ErrorCode
 from tests.helpers import FIXTURES, TODAY
 
 MISSING = ErrorCode.MISSING_REQUIRED

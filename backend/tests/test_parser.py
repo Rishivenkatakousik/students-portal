@@ -4,7 +4,7 @@ import codecs
 
 import pytest
 
-from app.importer.parser import FileError, FileErrorCode, parse_csv
+from app.services.csv_import.parser import FileError, FileErrorCode, parse_csv
 from tests.helpers import HEADER, row
 
 LIMIT = 1024 * 1024

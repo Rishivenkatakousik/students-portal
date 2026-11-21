@@ -15,7 +15,7 @@ import io
 from dataclasses import dataclass
 from enum import StrEnum
 
-from app.importer.validators import REQUIRED_COLUMNS
+from app.core.student_fields import REQUIRED_COLUMNS
 
 
 class FileErrorCode(StrEnum):

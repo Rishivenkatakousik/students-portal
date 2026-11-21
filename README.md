@@ -129,18 +129,26 @@ shape: `{"error": {"code": "...", "message": "..."}}`.
 ```
 backend/
   app/
-    importer/     parser.py (file → rows), validators.py (one rule per column),
-                  pipeline.py (row order, duplicates), service.py (save in one transaction)
-    routers/      imports.py, students.py
-    grading.py    total, percentage, grade, pass/fail
-    models.py     SQLAlchemy tables; alembic/ holds the migrations
-    frontend.py   serves the built React app
+    main.py       create_app(): error handlers, routers, the built frontend
+    frontend.py   serves the built React app (SPA fallback)
+    core/         config, database session, JSON errors, the student column list
+    api/          HTTP only: deps.py and routes/ (imports, students, grading, health)
+    models/       SQLAlchemy tables; alembic/ holds the migrations
+    schemas/      Pydantic response shapes
+    repositories/ all SQL (search, sort, bulk upsert); never commits
+    services/     business rules: grading.py (total, percentage, grade, pass/fail),
+                  students.py (reports), imports.py (one import in one transaction)
+      csv_import/ parser.py (file → rows), validators.py (one rule per column),
+                  pipeline.py (row order, duplicates), report.py (error CSV)
   seed/           messy data generator and loader
   tests/          pytest suite; fixtures/ holds the sample CSVs
 frontend/
-  src/pages/      ImportPage, StudentsPage, StudentReportPage
-  src/api.ts      typed API client (axios)
-  src/ui.ts       shared Tailwind class lists
+  src/api/        typed API client (axios) and response types
+  src/hooks/      React Query hooks and cache keys, URL list state, debounce
+  src/components/ shared pieces (Layout, Pagination, ErrorAlert); imports/ and students/
+  src/pages/      ImportPage, StudentsPage, StudentReportPage, NotFoundPage
+  src/utils/      formatters; src/constants/ the CSV column labels
+  src/styles/     Tailwind theme (index.css) and shared class lists (ui.ts)
 Dockerfile, docker-compose.yml
 PLAN.md           build plan and trap catalogue
 docs/assignment-rules.md   the column and file rules from the sample pack

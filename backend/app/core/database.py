@@ -3,7 +3,7 @@ from collections.abc import Iterator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.config import settings
+from app.core.config import settings
 
 # pool_pre_ping replaces connections the database has dropped (e.g. after a
 # Postgres restart) instead of failing the next request.
