@@ -119,6 +119,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     // Backend errors look like {"error": {"code", "message"}}; anything else
     // (e.g. a proxy's HTML error page) gets a generic message.
     const error = (body as { error?: { code?: string; message?: string } } | null)?.error
+    if (!error && [502, 503, 504].includes(response.status)) {
+      // A proxy answered because the backend is down or restarting.
+      throw new ApiError(
+        response.status,
+        'SERVER_UNAVAILABLE',
+        'The server is not responding right now. Please try again in a moment.',
+      )
+    }
     throw new ApiError(
       response.status,
       error?.code ?? `HTTP_${response.status}`,

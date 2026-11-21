@@ -287,6 +287,7 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 3. States: idle, uploading (spinner + "Checking N KB…"), file error (red box: what's wrong + how to fix), network error with Retry, success.
 4. Success: cards Rows read / Imported (new · updated · unchanged) / Rejected; extra columns note; problems table (Row, Student ID, Field, Problem) paginated via the problems endpoint; "View students" link; "No problems found 🎉" when zero errors.
 - **Done when:** both fixtures show the golden numbers and readable problems in the browser; a `.png` renamed to `.csv` shows a friendly error.
+- **Built notes:** client-side 10 MB check before upload; Retry offered only when retrying can help (network/server), not for a bad file; proxy 502/503/504 → "Couldn't reach the server"; problems table turns into labelled cards under 600px (`.table--stack`, reused by the students table).
 - Commit: `feat(frontend): import page`
 
 ### Step 9 — Students page
