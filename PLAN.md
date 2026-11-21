@@ -84,13 +84,14 @@ Synchronous in-request (5k rows ≪ 2 s); 10 MB cap; UI shows uploading state an
 | GET | `/api/imports/{id}` | summary |
 | GET | `/api/imports/{id}/problems?page=&page_size=` | paginated row problems (ordered by line) |
 | GET | `/api/imports/{id}/problems.csv` | bonus: error report download |
-| GET | `/api/students?q=&grade_level=&section=&page=&page_size=&sort=` | `{items,total,page,page_size}`; q matches name (ILIKE/trigram) or ID prefix; page_size ≤ 100 |
+| GET | `/api/students?q=&grade_level=&section=&page=&page_size=&sort=` | `{items,total,page,page_size}`; q = part of a name or ID (case-insensitive, spaces collapsed, `%`/`_` matched literally); sort `student_id`/`name`/`class`/`percentage` (± prefix), always tie-broken by student_id so pages never overlap; page_size ≤ 100 |
 | GET | `/api/students/{student_id}` | report; case-insensitive; 404 JSON if unknown |
+| GET | `/api/grading-scheme` | bands + pass rules, so the UI states the scheme without copying it |
 | GET | `/api/health` | Docker healthcheck |
 Every error uses one shape: `{"error": {"code", "message"}}` (`app/errors.py`) — file problems 400, too large 413, unknown import 404, bad request 422, save failure 500 `IMPORT_FAILED`, anything unexpected 500 `INTERNAL_ERROR` (logged, no stack trace sent). Server never crashes on bad input.
 
 ## Grading scheme (stated in UI + NOTES.md)
-A ≥ 80 · B 65–79.99 · C 50–64.99 · D 40–49.99 · F < 40 (on overall %). **Pass** = overall ≥ 40 **and** every subject ≥ 33; report shows which subject(s) caused a fail. Percentage to 1 dp; total /500.
+A ≥ 80 · B 65–79.99 · C 50–64.99 · D 40–49.99 · F < 40 (on overall %). **Pass** = overall ≥ 40 **and** every subject ≥ 33; report shows which subject(s) caused a fail. Percentage rounded half-up to 1 dp; **grade and the 40% rule use that displayed value**, so the UI never shows "80.0%" next to a B. Subject pass mark compares the exact mark. Total /500.
 
 ## Frontend
 - **/import:** drag-drop or picker, file name + size, required-columns hint, "Upload and import". States: uploading, file-level error (what + how to fix), summary cards (read / imported [new, updated, unchanged] / rejected), paginated problem table (row, student ID, field, problem), download error CSV, "View students" link.
@@ -263,7 +264,7 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 - Commit: `feat(api): import endpoint with upsert and error storage`
 
 ### Step 6 — Grading + students API
-1. `app/grading.py`: `summarise(marks) -> Result(total, percentage, grade, passed, failed_subjects)` using the stated scheme; one SQL expression for percentage reused by list sorting.
+1. `app/grading.py`: `summarise(marks) -> Result(total, percentage, grade, passed, failed_subjects)` using the stated scheme; one SQL expression for percentage used only for list sorting (same rounding; verified against the sample: sorted order matches displayed values for all 4,685). Shared `get_today` / session dependencies in `app/deps.py`.
 2. `routers/students.py`:
    - `GET /api/students` — `q` (name ILIKE `%q%` OR id prefix, case-insensitive), `grade_level`, `section`, `page` ≥ 1, `page_size` 1–100 (default 25), `sort` from a whitelist (`student_id`, `name`, `percentage`, ±). Returns `{items, total, page, page_size}`, each item with percentage + grade.
    - `GET /api/students/{student_id}` — upper-case the ID; 404 `{code: "STUDENT_NOT_FOUND"}`.

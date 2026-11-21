@@ -32,7 +32,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from app.db import SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
-from app.routers.imports import get_today  # noqa: E402
+from app.deps import get_today  # noqa: E402
 from tests.helpers import TODAY  # noqa: E402
 
 BACKEND_DIR = Path(__file__).parent.parent

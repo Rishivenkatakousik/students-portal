@@ -1,12 +1,11 @@
-from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, UploadFile
+from fastapi import APIRouter, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db import get_session
+from app.deps import SessionDep, TodayDep
 from app.errors import AppError
 from app.importer.parser import FileError, FileErrorCode
 from app.importer.service import ImportFailed, run_import
@@ -18,16 +17,8 @@ router = APIRouter(prefix="/api/imports", tags=["imports"])
 FIRST_PAGE_SIZE = 50
 
 
-def get_today() -> date:
-    """Reference date for age checks; tests override it to pin a date."""
-    return date.today()
-
-
-SessionDep = Annotated[Session, Depends(get_session)]
-
-
 @router.post("", status_code=201)
-def create_import(file: UploadFile, session: SessionDep, today: Annotated[date, Depends(get_today)]) -> ImportResult:
+def create_import(file: UploadFile, session: SessionDep, today: TodayDep) -> ImportResult:
     max_bytes = settings.max_upload_mb * 1024 * 1024
     data = file.file.read(max_bytes + 1)  # one byte over is enough to know it's too big
     filename = (file.filename or "upload.csv")[:255]
