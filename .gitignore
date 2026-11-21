@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+
+# Env and OS
+.env
+.DS_Store
+
+# Assignment brief is confidential — never commit it
+*.pdf
