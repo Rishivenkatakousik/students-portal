@@ -632,3 +632,257 @@ input[type='search'] {
     animation: none;
   }
 }
+
+/* Student report */
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 16px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 720px) {
+  .report-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.report-skeleton {
+  min-height: 150px;
+  background: var(--color-surface-muted);
+}
+
+.report-details {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.report-details h1 {
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+
+.report-details p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.overall {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overall--pass {
+  background: var(--color-accent-soft);
+  border-color: #cfc4fb;
+}
+
+.overall--fail {
+  background: var(--color-danger-soft);
+  border-color: #f5c2bd;
+}
+
+.overall__numbers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+.overall__numbers > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.overall__label {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.overall__percentage {
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--color-accent);
+}
+
+.overall--fail .overall__percentage {
+  color: var(--color-danger);
+}
+
+.overall__grade {
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.badge--large {
+  margin-left: auto;
+  padding: 6px 16px;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+}
+
+/* Solid colours: the result must stand out on its tinted card and on paper. */
+.badge--large.badge--pass {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.badge--large.badge--fail {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+.overall__total {
+  margin: 0;
+}
+
+.overall__reasons {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--color-danger);
+  font-size: 0.9rem;
+}
+
+.marks-table tbody th,
+.marks-table tfoot th {
+  text-align: left;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.95rem;
+  color: var(--color-text);
+  background: none;
+}
+
+.marks-table tfoot td,
+.marks-table tfoot th {
+  border-top: 2px solid var(--color-border);
+  font-weight: 700;
+}
+
+.marks-table__bar-col {
+  width: 45%;
+}
+
+.bar {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+
+.bar__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-accent);
+}
+
+.marks-table__row--fail .bar__fill {
+  background: var(--color-danger);
+}
+
+.fail-note {
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  /* Fixed columns so the bars keep their share instead of shrinking to dots. */
+  .marks-table {
+    table-layout: fixed;
+  }
+
+  .marks-table th,
+  .marks-table td {
+    white-space: normal;
+    padding: 10px;
+  }
+
+  .marks-table thead th:first-child {
+    width: 38%;
+  }
+
+  .marks-table__bar-col {
+    width: 30%;
+  }
+
+  .fail-note {
+    display: block;
+  }
+}
+
+.report-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.scheme-note {
+  flex: 1 1 320px;
+  margin: 0;
+}
+
+/* Printing: just the report, on white, with its colours. */
+@media print {
+  .site-header,
+  .skip-link,
+  .no-print {
+    display: none !important;
+  }
+
+  body,
+  :root {
+    background: #fff;
+  }
+
+  main.container {
+    max-width: none;
+    padding: 0;
+  }
+
+  .card,
+  .table-wrap {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

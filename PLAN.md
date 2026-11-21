@@ -307,6 +307,7 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 5. Print button (`window.print()`) + `@media print` CSS hiding nav/buttons.
 6. States: loading skeleton, "Student not found" (404) with link back, other errors + Retry.
 - **Done when:** a known student shows correct numbers (check one by hand); `/students/NOPE` shows not-found; print preview looks clean.
+- **Built notes:** checked by hand — STU00014: 46+28+37+52+39 = 202 → 40.4%, D, FAIL (Science 28 < 33); API and SQL agree. Fail reasons listed ("Below 33 in Science", "Overall below 40%"). Grading scheme stated on the page from `/api/grading-scheme`. Page title = student name (names the PDF when printed). Back link returns to the list's exact URL. Server error ≠ not found: 404 shows "Student not found", other errors show Retry.
 - Commit: `feat(frontend): student report page`
 
 ### Step 11 — Docker
