@@ -154,11 +154,26 @@ def _map_header(header: list[str]) -> tuple[dict[str, int], list[str]]:
 
     missing = [c for c in REQUIRED_COLUMNS if c not in names]
     if missing:
-        message = f"The header row is missing required columns: {', '.join(missing)}."
-        if len(names) == 1 and any(sep in header[0] for sep in (";", "\t", "|")):
-            message += " The file seems to use a separator other than a comma; save it as a comma-separated CSV."
-        raise FileError(FileErrorCode.MISSING_COLUMNS, message)
+        raise FileError(FileErrorCode.MISSING_COLUMNS, _missing_columns_message(header, missing))
 
     columns = {name: names.index(name) for name in REQUIRED_COLUMNS}
     extra = [header[i].strip() for i, n in enumerate(names) if n not in REQUIRED_COLUMNS and n]
     return columns, extra
+
+
+def _missing_columns_message(header: list[str], missing: list[str]) -> str:
+    expected = ", ".join(REQUIRED_COLUMNS)
+    if len(header) == 1:
+        for separator, name in ((";", "semicolons"), ("\t", "tabs"), ("|", "vertical bars")):
+            parts = {part.strip().lower() for part in header[0].split(separator)}
+            if set(REQUIRED_COLUMNS) <= parts:
+                return (
+                    f"The columns are separated by {name} instead of commas. "
+                    "Save the file as 'CSV (Comma delimited)' and upload again."
+                )
+    if len(missing) == len(REQUIRED_COLUMNS):
+        return (
+            "This doesn't look like a student results file: none of the required columns "
+            f"were found in the first row. The first row must be a header with: {expected}."
+        )
+    return f"The header row is missing required columns: {', '.join(missing)}."

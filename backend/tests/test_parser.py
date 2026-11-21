@@ -113,10 +113,18 @@ def test_missing_columns_are_named():
     assert "email, section" in error.message
 
 
-def test_semicolon_separated_file_gets_a_hint():
-    error = file_error((HEADER.replace(",", ";") + "\n" + row().replace(",", ";")).encode())
+@pytest.mark.parametrize("separator, name", [(";", "semicolons"), ("\t", "tabs"), ("|", "vertical bars")])
+def test_other_separators_are_named(separator, name):
+    error = file_error((HEADER.replace(",", separator) + "\n" + row().replace(",", separator)).encode())
     assert error.code == FileErrorCode.MISSING_COLUMNS
-    assert "separator" in error.message
+    assert f"separated by {name}" in error.message
+
+
+def test_unrelated_file_is_called_out_not_blamed_on_separators():
+    error = file_error(b"# Meeting notes | Monday\nAgenda: results, timetable\n")
+    assert error.code == FileErrorCode.MISSING_COLUMNS
+    assert error.message.startswith("This doesn't look like a student results file")
+    assert "separated" not in error.message
 
 
 def test_duplicate_column_is_rejected():

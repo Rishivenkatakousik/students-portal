@@ -82,12 +82,12 @@ Synchronous in-request (5k rows ≪ 2 s); 10 MB cap; UI shows uploading state an
 |---|---|---|
 | POST | `/api/imports` | multipart upload → summary + first 50 errors |
 | GET | `/api/imports/{id}` | summary |
-| GET | `/api/imports/{id}/errors?page=&page_size=` | paginated row errors |
-| GET | `/api/imports/{id}/errors.csv` | bonus: error report download |
+| GET | `/api/imports/{id}/problems?page=&page_size=` | paginated row problems (ordered by line) |
+| GET | `/api/imports/{id}/problems.csv` | bonus: error report download |
 | GET | `/api/students?q=&grade_level=&section=&page=&page_size=&sort=` | `{items,total,page,page_size}`; q matches name (ILIKE/trigram) or ID prefix; page_size ≤ 100 |
 | GET | `/api/students/{student_id}` | report; case-insensitive; 404 JSON if unknown |
 | GET | `/api/health` | Docker healthcheck |
-Global exception handler → JSON 500; server never crashes on bad input.
+Every error uses one shape: `{"error": {"code", "message"}}` (`app/errors.py`) — file problems 400, too large 413, unknown import 404, bad request 422, save failure 500 `IMPORT_FAILED`, anything unexpected 500 `INTERNAL_ERROR` (logged, no stack trace sent). Server never crashes on bad input.
 
 ## Grading scheme (stated in UI + NOTES.md)
 A ≥ 80 · B 65–79.99 · C 50–64.99 · D 40–49.99 · F < 40 (on overall %). **Pass** = overall ≥ 40 **and** every subject ≥ 33; report shows which subject(s) caused a fail. Percentage to 1 dp; total /500.
@@ -192,7 +192,7 @@ Each line = one parametrized test case (`tests/test_validators.py`, `tests/test_
 - Re-upload with one changed mark → 1 updated
 - Upload whose ID differs only in case from an existing student → update, not new
 - Bad file → 4xx, zero rows written, previous data intact, server still answers `/api/health`
-- Two concurrent uploads touching the same student → both succeed, no deadlock/duplicate (ON CONFLICT)
+- Two concurrent uploads touching the same students → both succeed. **Verified:** without sorting rows by student_id before the upsert, Postgres reports "deadlock detected" (3,000 rows in opposite order); sorting gives every import the same lock order
 - DB error mid-import (simulated) → full rollback, import marked failed
 
 ## Build steps
@@ -254,9 +254,9 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
    - Upsert valid rows in batches of 1,000 with `postgresql.insert(Student).on_conflict_do_update(..., where=<any column IS DISTINCT FROM excluded>).returning(literal_column("xmax = 0"))` → count new / updated; unchanged = imported − returned.
    - Bulk-insert `ImportProblem` rows; fill summary counts; one transaction; any DB exception → rollback, record failed import in a fresh transaction.
 2. `routers/imports.py`:
-   - `POST /api/imports` — read upload with a size guard (stop reading past 10 MB → 413); return summary + first 50 errors; file errors → 400 with `{code, message}` body.
-   - `GET /api/imports/{id}`, `GET /api/imports/{id}/errors?page=&page_size=`.
-3. Global exception handler in `main.py` → JSON 500 with a generic message; log the traceback.
+   - `POST /api/imports` — read upload with a size guard (stop reading past 10 MB → 413); return summary + first 50 problems; file errors → 400 with `{"error": {code, message}}` body.
+   - `GET /api/imports/{id}`, `GET /api/imports/{id}/problems?page=&page_size=`.
+3. `app/errors.py`: one error shape for every failure; unexpected errors → 500 with a generic message, traceback logged.
 4. `tests/conftest.py`: test DB (`DATABASE_URL` pointing at a `results_test` database), run migrations once, truncate tables per test.
 5. `tests/test_api_imports.py`: every **Import behaviour** trap (re-upload idempotent, changed mark → updated, case-only ID → update, bad file writes nothing, simulated DB failure rolls back).
 - **Done when:** uploading both fixtures through the API returns the golden counts; second upload → 0 new / 0 updated / all unchanged.
@@ -274,7 +274,7 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 ### Step 7 — Frontend setup
 1. `npm create vite@latest frontend -- --template react-ts`; add `react-router-dom`, `@tanstack/react-query`.
 2. Vite dev proxy `/api` → `http://localhost:8080`.
-3. `src/api.ts`: typed fetch helpers + `ApiError` class (reads `{code, message}`).
+3. `src/api.ts`: typed fetch helpers + `ApiError` class (reads `{"error": {code, message}}`).
 4. Layout: header "Results Portal" with Import / Students nav (active state); routes `/` → redirect `/students`, `/import`, `/students`, `/students/:id`, `*` → NotFound.
 5. Plain CSS with variables (no UI library — keeps the bundle and the explanation small); responsive to phone width.
 - **Done when:** `npm run dev` shows the layout and nav between empty pages.
@@ -284,7 +284,7 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 1. Drop zone + "Choose file" (accept `.csv`), show name + size, required-columns hint.
 2. "Upload and import" (disabled while uploading) → `useMutation` POST.
 3. States: idle, uploading (spinner + "Checking N KB…"), file error (red box: what's wrong + how to fix), network error with Retry, success.
-4. Success: cards Rows read / Imported (new · updated · unchanged) / Rejected; extra columns note; problems table (Row, Student ID, Field, Problem) paginated via the errors endpoint; "View students" link; "No problems found 🎉" when zero errors.
+4. Success: cards Rows read / Imported (new · updated · unchanged) / Rejected; extra columns note; problems table (Row, Student ID, Field, Problem) paginated via the problems endpoint; "View students" link; "No problems found 🎉" when zero errors.
 - **Done when:** both fixtures show the golden numbers and readable problems in the browser; a `.png` renamed to `.csv` shows a friendly error.
 - Commit: `feat(frontend): import page`
 
@@ -337,7 +337,7 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 - Commit any fixes: `fix: ...`
 
 ### Step 15 — Bonuses (only if time)
-1. `GET /api/imports/{id}/errors.csv` + "Download error report" button.
+1. `GET /api/imports/{id}/problems.csv` + "Download error report" button.
 2. Sort by clicking table headers.
 3. Import history list on the Import page.
 
