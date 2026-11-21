@@ -122,7 +122,9 @@ Each line = one parametrized test case (`tests/test_validators.py`, `tests/test_
 - Binary / `.xlsx` renamed `.csv` → file error (sniff by decoding, never trust extension or MIME)
 - > 10 MB → 413
 - Semicolon- or tab-delimited → "missing columns" file error with hint about separators
-- Unterminated quote (`"Patel, Sahil,...` never closed) swallows the rest of the file → catch `csv.Error`, report file error with line number; also guard `csv.field_size_limit`
+- Unterminated quote (`"Patel, Sahil,...` never closed): Python's csv **silently** swallows the rest of the file into one value (verified). Use `strict=True` → "unexpected end of data" → file error with the line number; also raise `csv.field_size_limit`
+- Broken quote inside one row (`"ab"c,...`) → strict mode errors on that row only; reader recovers → reject just that row (INVALID_FORMAT, whole row) and continue
+- Space before a quoted value (`a, "b,c"`) → `skipinitialspace=True` reads 2 fields, not 3 (no effect on the sample files, verified)
 - Mixed CRLF / LF / lone CR in one file ⚙
 
 **Header**
@@ -226,11 +228,12 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 1. `importer/parser.py`:
    - `read_file(data: bytes) -> ParsedFile` — reject empty / too big; decode `utf-8-sig` strictly (`UnicodeDecodeError` → `FileError`); `csv.reader(io.StringIO(text, newline=""))`.
    - Header: strip + lower each name; check required columns present and no duplicates → `FileError` listing problems; record extra columns; map column name → index.
-   - Iterate rows tracking the **start line** of each record (line count before reading the record + 1, so multi-line quoted fields report correctly). Catch `csv.Error` → `FileError` with line number.
+   - Iterate rows tracking the **start line** of each record (line count before reading the record + 1, so multi-line quoted fields report correctly). `strict=True`, `skipinitialspace=True`; unclosed quote → `FileError`; other `csv.Error` → row-level error, keep going.
 2. `importer/pipeline.py`: `process(parsed, today) -> ImportResult` applying the row order: skip all-empty → field count → validate all columns (collect every error) → duplicate check against a `seen_ids` set filled with **every** row's normalised ID (valid or not). Returns `rows_read`, `valid_rows` (list of dicts), `errors` (list of `RowError` with line + student_id).
 3. `tests/test_parser.py`: every File / Header / Row-structure trap.
 4. `tests/test_golden.py`: run the pipeline on both fixture files.
-   - Find the `today` the expected numbers were computed for (sweep dates around the assignment date; pick one that gives 4,685/315) and pin it in a fixture; note it in NOTES.md.
+   - Find the `today` the expected numbers were computed for and pin it. **Result:** counts hold for every day from 2025-12-26 to at least 2028-03-01; pinned `2026-11-21` in `tests/helpers.py`.
+   - **Verified against alternatives:** counting only *valid* rows as "seen" gives 17 / 4,687 and case-sensitive IDs give 4,707, so the data confirms "first row wins even if invalid" and case-insensitive IDs. Whether wrong-field-count rows mark their ID as seen is not decided by the data (both give the same counts) — chose yes; note in NOTES.md.
    - Assert small → 25 / 16 / 9 with the exact list of `(line, code)`; sample → 5,000 / 4,685 / 315.
    - If the counts don't match, investigate the difference row by row before changing any rule — the README is the source of truth.
 - **Done when:** golden counts match exactly.
