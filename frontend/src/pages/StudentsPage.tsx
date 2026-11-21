@@ -144,8 +144,11 @@ export function StudentsPage() {
       ) : (
         <>
           <p className="mb-2 text-sm text-muted" aria-live="polite">
-            {formatNumber(students.data.total)} {students.data.total === 1 ? 'student' : 'students'}
-            {filtered ? ' match' : ''}
+            {/* While a new search loads, the dimmed rows are the previous results:
+                don't pair their count with the new search. */}
+            {students.isPlaceholderData
+              ? 'Searching…'
+              : `${formatNumber(students.data.total)} ${students.data.total === 1 ? 'student' : 'students'}${filtered ? ' match' : ''}`}
           </p>
           <StudentsTable students={students.data.items} loading={students.isFetching} listSearch={search.toString()} />
           <div className="flex flex-wrap items-center justify-between gap-3">

@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useRef, useState, type DragEvent } from 'react'
 import { Link } from 'react-router'
 import { api, ApiError, type ImportResult, type Problem } from '../api'
@@ -15,7 +15,17 @@ export function ImportPage() {
   const [file, setFile] = useState<File | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
-  const upload = useMutation({ mutationFn: (chosen: File) => api.uploadImport(chosen, setProgress) })
+  const queryClient = useQueryClient()
+  const upload = useMutation({
+    mutationFn: (chosen: File) => api.uploadImport(chosen, setProgress),
+    // Cached lists and reports are now out of date; without this, "View
+    // students" right after an import could still show "No students yet".
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['students'] }),
+        queryClient.invalidateQueries({ queryKey: ['student'] }),
+      ]),
+  })
 
   function choose(chosen: File | undefined) {
     if (!chosen) return

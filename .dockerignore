@@ -1,0 +1,12 @@
+# Keep the build context small and free of local state and secrets.
+.git
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/*.egg-info
+frontend/dist
+.env
+**/.env
+*.pdf
+.DS_Store

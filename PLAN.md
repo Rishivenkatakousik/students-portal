@@ -317,6 +317,8 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 4. `.dockerignore`: `node_modules`, `.venv`, `.git`, `*.pdf`, `dist`.
 5. Test command: `docker compose run --rm app pytest` (creates the test DB if missing).
 - **Done when:** `docker compose down -v && docker compose up --build` → http://localhost:8080 works end to end; tests pass inside the container.
+- **Built notes:** `app/frontend.py` serves `frontend/dist` (SPA fallback to index.html with `Cache-Control: no-cache`; `/assets` static; unknown `/api/...` stays a JSON 404; path traversal blocked — checked with raw `..`/`%2e%2e` requests). `main.py` is a `create_app()` factory. Image: node:24-alpine build stage + python:3.13-slim, non-root `app` user, deps layer cached via a placeholder package + editable install, healthcheck on `/api/health`, migrations then `exec uvicorn`. Both ports bound to 127.0.0.1. Verified a first run on a throwaway compose project (`-p magicofresh`, own empty volume): migrations run, empty state → import 4,685 new → search → report → re-upload 4,685 unchanged. 266 tests pass inside the container.
+- **Bugs found here:** (1) "View imported students" right after an import showed the cached "No students yet" — the import now invalidates cached student queries; (2) while a new search loaded, the count line paired the old total with "match" — now "Searching…"; (3) Alembic's log lines were missing (env.py skipped `fileConfig`) — restored with `disable_existing_loggers=False`.
 - Commit: `build: Dockerfile and docker-compose`
 
 ### Step 12 — Seed script

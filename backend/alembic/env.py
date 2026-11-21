@@ -4,11 +4,19 @@ The database URL comes from app settings (DATABASE_URL), not alembic.ini, so
 the app and its migrations can never point at different databases.
 """
 
+from logging.config import fileConfig
+
 from alembic import context
 from sqlalchemy import create_engine, pool
 
 from app.config import settings
 from app.models import Base
+
+# Log "Running upgrade ..." lines (useful when a container fails to start).
+# disable_existing_loggers=False: don't silence the app's loggers when
+# migrations run inside the same process (the tests do this).
+if context.config.config_file_name:
+    fileConfig(context.config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 

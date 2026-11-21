@@ -1,4 +1,17 @@
+# docker compose up --build   ->   http://localhost:8080
 services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080" # reachable from this machine only
+    environment:
+      # Inside the compose network Postgres is "db" on its normal port.
+      DATABASE_URL: postgresql+psycopg://results:results@db:5432/results
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
   db:
     image: postgres:16-alpine
     environment:
@@ -7,8 +20,9 @@ services:
       POSTGRES_PASSWORD: results
       POSTGRES_DB: results
     ports:
-      # Host port 5433 so it never clashes with a Postgres already on 5432.
-      - "127.0.0.1:5433:5432" # reachable from this machine only
+      # For running the backend or tests from the host. Port 5433 so it never
+      # clashes with a Postgres already using 5432.
+      - "127.0.0.1:5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
