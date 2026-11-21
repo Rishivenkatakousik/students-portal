@@ -38,7 +38,7 @@ backend/app/
 backend/alembic/     initial migration (tables, indexes, pg_trgm)
 backend/tests/       unit, parser, golden, api
 frontend/src/pages/  ImportPage, StudentsPage, StudentReportPage, NotFound
-seed/generate.py
+backend/seed/generate.py   (inside backend/ so the Docker image includes it)
 Dockerfile, docker-compose.yml, .dockerignore, .gitignore, README.md, NOTES.md
 ```
 
@@ -322,12 +322,13 @@ Each step ends with a **Done when** check and a commit. Work on a new `main` bra
 - Commit: `build: Dockerfile and docker-compose`
 
 ### Step 12 — Seed script
-1. `seed/generate.py` (argparse): `--rows`, `--error-rate`, `--seed`, `--out`, `--upload URL`.
+1. `backend/seed/generate.py` (argparse): `--rows`, `--error-rate`, `--seed`, `--today`, `--out`, `--upload URL`.
 2. Generate clean students with Faker `en_IN`: DOB consistent with grade (age ≈ grade + 5), realistic marks (normal distribution, clipped), sections A–F, unique IDs.
 3. Apply mutations at `--error-rate`, picking from every ⚙ trap in the catalogue; track the expected outcome of each mutation (valid-after-normalising vs rejected). Add file-level noise: BOM, CRLF, shuffled columns, an extra column, blank and all-comma lines.
 4. Print expected read / imported / rejected; with `--upload`, POST through the API and print the portal's answer next to it.
 5. `tests/test_seed.py`: generate 500 rows with a fixed seed → pipeline counts equal the generator's expected counts.
 - **Done when:** `docker compose exec app python -m seed.generate --rows 5000 --upload http://localhost:8080` shows matching expected vs actual counts.
+- **Built notes:** 20 kinds of breakage + duplicate IDs, 11 kinds of harmless mess, file-level BOM/CRLF/shuffled + upper-case headers/extra column/blank and all-comma lines. Tests compare the exact set of rejected *lines* (not just totals) for several seeds; a 40-seed sweep also matched. Verified in Docker: 5,000 rows → expected 4,639 / 361 = portal; re-upload → 4,639 unchanged. **Bug found (in the generator):** it copied IDs from rows with a missing field for its duplicates; with shuffled columns that field can be the ID itself, so the importer rightly never saw it. Generator now only duplicates IDs from rows with the right number of fields.
 - Commit: `feat(seed): messy data generator and loader`
 
 ### Step 13 — README + NOTES.md

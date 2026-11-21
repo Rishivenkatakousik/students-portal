@@ -15,3 +15,6 @@ frontend/dist/
 
 # Assignment brief is confidential — never commit it
 *.pdf
+
+# Seed script output
+students_generated*.csv

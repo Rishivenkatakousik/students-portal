@@ -10,3 +10,5 @@ frontend/dist
 **/.env
 *.pdf
 .DS_Store
+students_generated*.csv
+**/students_generated*.csv
