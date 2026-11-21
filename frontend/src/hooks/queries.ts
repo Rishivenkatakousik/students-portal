@@ -57,7 +57,8 @@ export function useUploadImport(onProgress: ProgressHandler) {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.allStudents }),
         queryClient.invalidateQueries({ queryKey: queryKeys.allStudentReports }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.imports }),
       ]),
+    // Failed uploads are recorded too, so the import history changes either way.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.imports }),
   })
 }

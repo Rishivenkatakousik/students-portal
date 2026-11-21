@@ -55,8 +55,10 @@ export function StudentsTable({
                 </Link>
               </TableCell>
               <TableCell data-label="Class" className="px-4 py-3">
-                <span className="font-medium">Class {s.grade_level}</span>{' '}
-                <span className="text-muted-foreground">· Section {s.section}</span>
+                <span>
+                  <span className="font-medium">Class {s.grade_level}</span>{' '}
+                  <span className="text-muted-foreground">· Section {s.section}</span>
+                </span>
               </TableCell>
               <TableCell data-label="Percentage" className="px-4 py-3">
                 <div className="flex items-center gap-3">

@@ -66,12 +66,13 @@ export function useStudentListParams() {
       else next.set(key, String(value))
     }
     if (!('page' in changes)) next.delete('page')
-    setSearch(next, options)
+    // The list stays in place; paging scrolls to the top itself.
+    setSearch(next, { ...options, preventScrollReset: true })
   }
 
   /** Drop search, filters, sort and paging. */
   function clear() {
-    setSearch(new URLSearchParams())
+    setSearch(new URLSearchParams(), { preventScrollReset: true })
   }
 
   return { search, params, update, clear }

@@ -1,5 +1,5 @@
 import { ArrowUpRight, GraduationCap } from 'lucide-react'
-import { Link, NavLink, Outlet } from 'react-router'
+import { Link, NavLink, Outlet, ScrollRestoration } from 'react-router'
 import { cn } from '@/lib/utils'
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
@@ -54,6 +54,7 @@ export function Layout() {
       <main id="main" className="mx-auto w-full max-w-[1200px] px-4 pt-12 pb-16 print:max-w-none print:p-0">
         <Outlet />
       </main>
+      <ScrollRestoration />
     </>
   )
 }
