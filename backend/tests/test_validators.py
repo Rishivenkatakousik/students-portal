@@ -1,4 +1,4 @@
-"""Column validator tests: one case per data trap found in the sample files."""
+"""Column validator tests: one case per data trap."""
 
 from datetime import date
 from decimal import Decimal

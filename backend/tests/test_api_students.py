@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.helpers import FIXTURES, HEADER, row
+from tests.helpers import HEADER, row
 
 
 def load(client, *lines: str) -> None:
@@ -113,9 +113,9 @@ def test_invalid_query_parameters_are_explained(client, params):
     assert response.json()["error"]["code"] == "INVALID_REQUEST"
 
 
-def test_paging_through_the_sample_by_percentage_is_complete_and_ordered(client):
+def test_paging_by_percentage_is_complete_and_ordered(client):
     # With many equal percentages, each student must appear exactly once.
-    client.post("/api/imports", files={"file": ("s.csv", (FIXTURES / "students_sample.csv").read_bytes())})
+    load(client, *(row(student_id=f"STU{i:05d}", maths=str(40 + 20 * (i % 3))) for i in range(250)))
     seen, percentages, page = [], [], 1
     while True:
         items = client.get("/api/students", params={"sort": "-percentage", "page": page, "page_size": 100}).json()["items"]
@@ -125,7 +125,7 @@ def test_paging_through_the_sample_by_percentage_is_complete_and_ordered(client)
         percentages += [s["percentage"] for s in items]
         page += 1
 
-    assert len(seen) == len(set(seen)) == 4685
+    assert len(seen) == len(set(seen)) == 250
     assert percentages == sorted(percentages, reverse=True)
 
 

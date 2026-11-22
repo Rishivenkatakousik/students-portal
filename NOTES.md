@@ -10,17 +10,17 @@
 
 **A row is imported when it has the header's number of fields, every required column passes its rule, and its ID has not appeared on an earlier line of the file.** Otherwise the whole row is rejected and the administrator sees every problem in it: line, column, value, plain reason and code, on screen and as a CSV.
 
-- **Duplicates:** the first row with an ID wins *even if it was invalid*, and IDs ignore case. The sample confirms both: the other readings give 4,687 or 4,707 imported, not 4,685.
+- **Duplicates:** the first row with an ID wins *even if it was invalid*, and IDs ignore case.
 - **Strict formats:** dates only `YYYY-MM-DD` or `DD/MM/YYYY` with two-digit day and month; ASCII digits, no `+` sign or exponent (`+50`, `+9`, `1e3`, `82/100`, `N/A` rejected; `09` fine; class `9.0` rejected). Section `Z` is INVALID_FORMAT: not a section letter at all, rather than a number out of range.
 - **Names:** any Unicode letters including combining marks (Hindi vowel signs), plus `' ’ , . -`. **Emails:** ASCII with a dotted domain.
-- **Age 5–25** in whole years on the server's date (UTC in Docker). The sample's counts hold from 26 Dec 2025 to at least March 2028; tests pin the date.
+- **Age 5–25** in whole years on the server's date (UTC in Docker); tests pin the date.
 - **Broken quotes reject one row.** An unclosed quote would make csv run the following lines together until some later quote, silently losing them; instead that one line is rejected (its ID still shown) and reading restarts on the next line. A value legitimately spanning lines, with the right field count, is kept.
 - **Blank and all-empty rows are skipped**, whatever their comma count. Line numbers count every line; a value spanning lines is reported at its first line. A stray NUL character invalidates only its cell.
 
 ## Bad files, re-uploads, large files
 
 - **Whole-file errors** (nothing imported, each with a plain fix): empty, over 10 MB, not UTF-8 (including UTF-16), unreadable header, missing or duplicate columns, wrong separator, or a header but no student rows.
-- **Re-uploads:** a student in a later file is updated, identical data is unchanged (the same file twice: `0 new, 0 updated, 4,685 unchanged`). The last file uploaded wins, even an older export. Students missing from a file are kept.
+- **Re-uploads:** a student in a later file is updated, identical data is unchanged (the same file twice: `0 new, 0 updated`, every row unchanged). The last file uploaded wins, even an older export. Students missing from a file are kept.
 - **Each import is one transaction:** a failure imports nothing and is recorded. Rows are saved in ID order; without that, simultaneous uploads deadlocked in testing.
 - **Error report CSV:** uploaded cells starting with `= + - @` are made inert (CSV injection).
 - **10 MB limit** (`MAX_UPLOAD_MB`), enforced by the server and published to the browser so it can refuse a file before sending it. Imports run in the request: 5,000 rows take ~0.6 s, a full 10 MB file (~140,000 rows) ~19 s, with upload progress shown.
@@ -31,7 +31,7 @@ Percentage = total / 500, one decimal. The grade uses the shown value, so "80.0%
 
 ## How I know the import works
 
-Exact counts for both samples and every small-file problem by line and code; a test per data trap and per hostile file (stray quotes, NUL, UTF-16, JSON); a seed generator that knows which rows it broke matches the importer line by line. Screens were checked by hand in Chrome, not scripted.
+A test per data trap and per hostile file (stray quotes, NUL, UTF-16, JSON); a seed generator that knows which rows it broke matches the importer line by line. Screens were checked by hand in Chrome, not scripted.
 
 ## Missing, and next
 

@@ -42,6 +42,6 @@ def problems_csv(problems: Iterable[ImportProblem]) -> str:
 
 
 def report_filename(uploaded_name: str) -> str:
-    """students_sample.csv -> students_sample-problems.csv (safe for a header)."""
+    """term2_results.csv -> term2_results-problems.csv (safe for a header)."""
     stem = re.sub(r"[^A-Za-z0-9._-]+", "_", PurePath(uploaded_name).stem).strip("._") or "import"
     return f"{stem[:80]}-problems.csv"

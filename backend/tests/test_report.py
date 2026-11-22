@@ -6,7 +6,7 @@ import io
 import pytest
 
 from app.services.csv_import.report import report_filename, spreadsheet_safe
-from tests.helpers import FIXTURES, HEADER, row
+from tests.helpers import HEADER, row
 
 
 def upload(client, content: bytes, name: str = "students.csv"):
@@ -45,7 +45,7 @@ def test_cells_that_would_run_as_formulas_are_neutralised(value, expected):
 @pytest.mark.parametrize(
     "uploaded, expected",
     [
-        ("students_sample.csv", "students_sample-problems.csv"),
+        ("term2_results.csv", "term2_results-problems.csv"),
         ('evil"; filename=x.exe', "evil_filename_x-problems.csv"),
         ("Term 2 results (final).csv", "Term_2_results_final-problems.csv"),
         ("", "import-problems.csv"),
@@ -60,28 +60,33 @@ def test_report_filename_is_safe_for_the_download_header(uploaded, expected):
 
 
 def test_report_lists_every_problem_in_line_order(client):
-    import_id = upload(client, (FIXTURES / "students_small.csv").read_bytes(), "students_small.csv").json()[
-        "summary"
-    ]["id"]
+    lines = [
+        HEADER,
+        row(),
+        row(student_id="STU00002", date_of_birth="1970-01-01"),
+        row(student_id="STU00003", maths="-5"),
+        row(student_id="STU00004") + ",extra",
+    ]
+    import_id = upload(client, ("\n".join(lines) + "\n").encode(), "term2.csv").json()["summary"]["id"]
 
     response = client.get(f"/api/imports/{import_id}/problems.csv")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "text/csv; charset=utf-8"
-    assert response.headers["content-disposition"] == 'attachment; filename="students_small-problems.csv"'
+    assert response.headers["content-disposition"] == 'attachment; filename="term2-problems.csv"'
     rows = read_report(response)
     assert rows[0] == ["row", "student_id", "column", "problem", "code", "value"]
-    assert len(rows) == 1 + 9
+    assert len(rows) == 1 + 3
     assert rows[1] == [
-        "4",
-        "STU00003",
+        "3",
+        "STU00002",
         "date_of_birth",
         '"1970-01-01" makes the student 56 years old; students must be 5 to 25',
         "OUT_OF_RANGE",
         "1970-01-01",
     ]
-    assert [r[0] for r in rows[1:]] == ["4", "5", "6", "9", "10", "14", "15", "18", "21"]
-    assert rows[6][2] == "(whole row)"  # wrong field count
+    assert [r[0] for r in rows[1:]] == ["3", "4", "5"]
+    assert rows[3][2] == "(whole row)"  # wrong field count
 
 
 def test_report_neutralises_formulas_from_the_uploaded_file(client):
@@ -114,7 +119,7 @@ def test_report_for_unknown_import_is_404(client):
 
 
 def test_imports_are_listed_newest_first_including_failures(client):
-    upload(client, (FIXTURES / "students_small.csv").read_bytes(), "first.csv")
+    upload(client, ("\n".join([HEADER, row(), row(student_id="STU00002", maths="-5")]) + "\n").encode(), "first.csv")
     upload(client, b"name,marks\n", "broken.csv")
     upload(client, ("\n".join([HEADER, row()]) + "\n").encode(), "third.csv")
 
@@ -127,7 +132,7 @@ def test_imports_are_listed_newest_first_including_failures(client):
         ("first.csv", "completed"),
     ]
     assert body["items"][1]["file_error_code"] == "MISSING_COLUMNS"
-    assert body["items"][2]["rejected"] == 9
+    assert body["items"][2]["rejected"] == 1
 
 
 def test_import_history_pages(client):

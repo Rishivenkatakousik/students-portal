@@ -27,9 +27,7 @@ Open **http://localhost:8080**. The first build takes a few minutes; later
 starts take seconds. Postgres starts too, and the database schema is created
 automatically.
 
-Try it with the sample file: on **Import**, upload
-`backend/tests/fixtures/students_sample.csv`. Expected result: **5,000 rows
-read, 4,685 imported, 315 rejected** (348 problems listed).
+To try it with data, see [Load generated test data](#load-generated-test-data).
 
 Stop with `Ctrl+C` or `docker compose down`. Add `-v` (`docker compose down -v`)
 to also delete the database and start empty.
@@ -63,15 +61,11 @@ One command (starts Postgres if needed, uses a separate `results_test` database)
 docker compose run --rm app pytest
 ```
 
-315 tests: every column rule and trap, file-level problems (encodings, quotes,
-headers, line endings, NUL bytes, non-CSV files), the exact counts for both sample files, the import API
+311 tests: every column rule and trap, file-level problems (encodings, quotes,
+headers, line endings, NUL bytes, non-CSV files), the import API
 against Postgres (re-uploads, rollback on failure, concurrent uploads), the
 students and report API, grading boundaries, and a round trip where the seed
 generator and the importer must agree on every rejected line.
-
-The sample files in `backend/tests/fixtures/` are Es Magico's confidential
-sample pack, committed only so the golden-count tests run. Keep this
-repository private and do not redistribute them.
 
 ## Local development (without Docker for the app)
 
@@ -149,7 +143,7 @@ backend/
       csv_import/ parser.py (file → rows), validators.py (one rule per column),
                   pipeline.py (row order, duplicates), report.py (error CSV)
   seed/           messy data generator and loader
-  tests/          pytest suite; fixtures/ holds the sample CSVs (confidential, see "Run the tests")
+  tests/          pytest suite
 frontend/
   src/api/        typed API client (axios) and response types
   src/hooks/      React Query hooks and cache keys, URL list state, debounce

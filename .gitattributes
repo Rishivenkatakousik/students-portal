@@ -1,2 +1,0 @@
-# Test fixtures must keep their exact bytes (BOM, CRLF line endings)
-*.csv -text

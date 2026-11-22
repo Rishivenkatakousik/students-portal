@@ -11,7 +11,7 @@ from app.core.database import SessionLocal
 from app.models import Import, Student
 from app.repositories import students as students_repo
 from app.services import imports as import_service
-from tests.helpers import FIXTURES, HEADER, TODAY, row
+from tests.helpers import HEADER, TODAY, row
 
 
 def upload(client, content: bytes, name: str = "students.csv"):
@@ -26,44 +26,45 @@ def student_count(session) -> int:
     return session.scalar(select(func.count()).select_from(Student))
 
 
-# --- the sample pack ---------------------------------------------------------
+# --- counts and problems --------------------------------------------------------
 
 
-def test_small_file_import(client, db_session):
-    response = upload(client, (FIXTURES / "students_small.csv").read_bytes(), "students_small.csv")
+def test_import_reports_counts_and_problems(client, db_session):
+    content = csv_bytes(
+        row(),
+        row(student_id="STU00002", date_of_birth="1970-01-01"),
+        row(student_id="STU00003", maths="-5"),
+    )
+    response = upload(client, content, "term2.csv")
 
     assert response.status_code == 201
     body = response.json()
     summary = body["summary"]
     assert summary["status"] == "completed"
-    assert summary["filename"] == "students_small.csv"
-    assert (summary["rows_read"], summary["imported"], summary["rejected"]) == (25, 16, 9)
-    assert (summary["new"], summary["updated"], summary["unchanged"]) == (16, 0, 0)
-    assert body["problems"]["total"] == 9
+    assert summary["filename"] == "term2.csv"
+    assert (summary["rows_read"], summary["imported"], summary["rejected"]) == (3, 1, 2)
+    assert (summary["new"], summary["updated"], summary["unchanged"]) == (1, 0, 0)
+    assert body["problems"]["total"] == 2
     assert body["problems"]["items"][0] == {
-        "line": 4,
-        "student_id": "STU00003",
+        "line": 3,
+        "student_id": "STU00002",
         "field": "date_of_birth",
         "code": "OUT_OF_RANGE",
         "message": '"1970-01-01" makes the student 56 years old; students must be 5 to 25',
         "raw_value": "1970-01-01",
     }
-    assert student_count(db_session) == 16
+    assert student_count(db_session) == 1
 
 
-def test_sample_file_import_and_problem_pages(client):
-    body = upload(client, (FIXTURES / "students_sample.csv").read_bytes()).json()
-    summary = body["summary"]
+def test_problems_are_paged_in_line_order(client):
+    body = upload(client, csv_bytes(*(row(student_id=f"STU{i:05d}", maths="-5") for i in range(120)))).json()
 
-    assert (summary["rows_read"], summary["imported"], summary["rejected"]) == (5000, 4685, 315)
-    assert summary["new"] == 4685
-    assert summary["extra_columns"] == ["parent_phone"]
-    # 315 rejected rows carry 348 problems, matching the brief's "first 50 of 348".
-    assert body["problems"]["total"] == 348
+    assert body["problems"]["total"] == 120
     assert len(body["problems"]["items"]) == 50
 
-    last_page = client.get(f"/api/imports/{summary['id']}/problems", params={"page": 4, "page_size": 100}).json()
-    assert (last_page["total"], len(last_page["items"])) == (348, 48)
+    import_id = body["summary"]["id"]
+    last_page = client.get(f"/api/imports/{import_id}/problems", params={"page": 2, "page_size": 100}).json()
+    assert (last_page["total"], len(last_page["items"])) == (120, 20)
     lines = [p["line"] for p in last_page["items"]]
     assert lines == sorted(lines)
 
@@ -72,14 +73,14 @@ def test_sample_file_import_and_problem_pages(client):
 
 
 def test_uploading_the_same_file_again_changes_nothing(client, db_session):
-    content = (FIXTURES / "students_small.csv").read_bytes()
+    content = csv_bytes(row(), row(student_id="STU00002"))
     upload(client, content)
     first_update = db_session.scalar(select(Student.updated_at).where(Student.student_id == "STU00001"))
 
     second = upload(client, content).json()["summary"]
 
-    assert (second["new"], second["updated"], second["unchanged"]) == (0, 0, 16)
-    assert student_count(db_session) == 16
+    assert (second["new"], second["updated"], second["unchanged"]) == (0, 0, 2)
+    assert student_count(db_session) == 2
     db_session.expire_all()
     assert db_session.scalar(select(Student.updated_at).where(Student.student_id == "STU00001")) == first_update
 

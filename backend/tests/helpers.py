@@ -1,13 +1,10 @@
-"""Shared test data: fixture paths, pinned date, and a CSV row builder."""
+"""Shared test data: pinned date and a CSV row builder."""
 
 from datetime import date
-from pathlib import Path
 
 from app.core.student_fields import REQUIRED_COLUMNS
 
-FIXTURES = Path(__file__).parent / "fixtures"
-
-# Ages depend on "today", so tests pin it (the sample counts hold 2025-12-26 to 2028-03-01).
+# Ages depend on "today", so tests pin it.
 TODAY = date(2026, 11, 21)
 
 HEADER = ",".join(REQUIRED_COLUMNS)
